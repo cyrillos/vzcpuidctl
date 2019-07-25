@@ -97,6 +97,7 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 	char *buf = NULL, *pos, *end;
 	size_t buf_size = 0;
 	int ret = -1;
+	ssize_t len;
 	int took;
 	size_t i;
 
@@ -222,6 +223,25 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 	}
 
 	pr_info("Generated:\n%s", buf);
+
+	if (opts->out_fd_path) {
+		int fd = open(opts->out_fd_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (fd < 0) {
+			pr_perror("Can't open %s", opts->out_fd_path);
+			goto out;
+		}
+
+		len = write(fd, buf, strlen(buf));
+		close(fd);
+
+		if (len != strlen(buf)) {
+			pr_err("Wrote %zd bytes while %zu expected\n",
+			       len, strlen(buf));
+			goto out;
+		}
+	}
+
+	ret = 0;
 out:
 	list_for_each_entry_safe(item, tmp, &override_entries_list, list)
 		xfree(item);
