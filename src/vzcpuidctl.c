@@ -202,7 +202,7 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 			continue;
 
 		took = generate_override_entry(pos, end - pos, e);
-		pos += took + 1;
+		pos += took;
 		if (pos > end || (end - pos) < 128) {
 			pr_err("Too many entries in the override list\n");
 			goto out;
@@ -213,7 +213,7 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 		e = &item->entry;
 
 		took = generate_override_entry(pos, end - pos, e);
-		pos += took + 1;
+		pos += took;
 
 		if (pos > end || (end - pos) < 128) {
 			pr_err("Too many entries in the override list\n");
