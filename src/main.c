@@ -17,12 +17,12 @@ int main(int argc, char *argv[])
 	static struct option long_opts[] = {
 		{"verbosity",		optional_argument,	0,	'v' },
 		{"help",		no_argument,		0,	'h' },
-		{"write",		no_argument,		0,	'w' },
 		{"data",		required_argument,	0,	'd' },
 		{"data-file",		required_argument,	0,	'f' },
 		{"output",		required_argument,	0,	'o' },
-		{"use-cpuid_override",	no_argument,		0,	1000 },
-		{"cpuid_override-path",	required_argument,	0,	1010 },
+		{"use-cpuid-override",	no_argument,		0,	1000 },
+		{"cpuid-override-path",	required_argument,	0,	1010 },
+		{"write-cpuid-override",no_argument,		0,	1020 },
 		{ },
 	};
 	int log_level = LOG_DEBUG;
@@ -75,17 +75,17 @@ int main(int argc, char *argv[])
 			else
 				list_add(&sl->list, &opts.list_data_path);
 			break;
-		case 'w':
-			opts.write_procfs = true;
-			break;
 		case 'h':
 			goto print_help;
 			break;
 		case 1000:
-			opts.use_cpuid_override = true;
+			opts.parse_cpuid_override = true;
 			break;
 		case 1010:
 			opts.cpuid_override_path = optarg;
+			break;
+		case 1020:
+			opts.write_cpuid_override = true;
 			break;
 		default:
 			pr_err("?? getopt returned character code 0%o ??\n", c);
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
 	if (!opts.cpuid_override_path)
 		opts.cpuid_override_path = VZ_CPUID_OVERRIDE_PATH_DEFAULT;
 
-	if (opts.use_cpuid_override) {
+	if (opts.parse_cpuid_override) {
 		if (vz_cpu_parse_cpuid_override(opts.cpuid_override_path))
 			exit(1);
 	}

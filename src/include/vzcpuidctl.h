@@ -14,10 +14,10 @@ typedef struct {
 typedef struct {
 	char			*out_fd_path;
 	int			log_level;
-	bool			write_procfs;
 
 	char			*cpuid_override_path;
-	bool			use_cpuid_override;
+	bool			parse_cpuid_override;
+	bool			write_cpuid_override;
 
 	struct list_head	list_data_decoded;
 	struct list_head	list_data;
