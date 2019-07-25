@@ -232,8 +232,8 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 		close(fd);
 
 		if (len != strlen(buf)) {
-			pr_err("Wrote %zd bytes while %zu expected\n",
-			       len, strlen(buf));
+			pr_err("Wrote %zd bytes to %s while %zu expected\n",
+			       len, opts->out_fd_path, strlen(buf));
 			goto out;
 		}
 	}
