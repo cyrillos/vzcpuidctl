@@ -60,6 +60,42 @@ out:
 	return ret;
 }
 
+static int write_cpuid_override(opts_t *opts, char *buf, size_t len)
+{
+	ssize_t ret;
+	int fd;
+
+	if (!opts->write_cpuid_override)
+		return 0;
+
+	fd = open(opts->cpuid_override_path, O_WRONLY);
+	if (fd < 0) {
+		pr_perror("Can't open %s", opts->cpuid_override_path);
+		return -1;
+	}
+
+	ret = write(fd, "", 1);
+	if (ret != 1) {
+		pr_perror("Can't flush %s", opts->cpuid_override_path);
+		goto err;
+	}
+	pr_info("Flushed %s\n", opts->cpuid_override_path);
+
+	ret = write(fd, buf, len);
+	if (ret != len) {
+		pr_perror("Can't flush %s", opts->cpuid_override_path);
+		goto err;
+	}
+
+	close(fd);
+	pr_info("Updated %s\n", opts->cpuid_override_path);
+
+	return 0;
+err:
+	close(fd);
+	return -1;
+}
+
 static void show_fpu_info(cpuinfo_x86_t *c)
 {
 	size_t i;
@@ -95,7 +131,7 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 {
 	cpuinfo_x86_t *c =  &entry->rec.c;
 	char *buf = NULL, *pos, *end;
-	size_t buf_size = 0;
+	size_t buf_size = 0, buf_len;
 	int ret = -1;
 	ssize_t len;
 	int took;
@@ -219,6 +255,7 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 		}
 	}
 
+	buf_len = pos - buf;
 	pr_info("Generated:\n%s", buf);
 
 	if (opts->out_fd_path) {
@@ -228,17 +265,17 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 			goto out;
 		}
 
-		len = write(fd, buf, strlen(buf));
+		len = write(fd, buf, buf_len);
 		close(fd);
 
-		if (len != strlen(buf)) {
+		if (len != buf_len) {
 			pr_err("Wrote %zd bytes to %s while %zu expected\n",
-			       len, opts->out_fd_path, strlen(buf));
+			       len, opts->out_fd_path, buf_len);
 			goto out;
 		}
 	}
 
-	ret = 0;
+	ret = write_cpuid_override(opts, buf, buf_len);
 out:
 	list_for_each_entry_safe(item, tmp, &override_entries_list, list)
 		xfree(item);
