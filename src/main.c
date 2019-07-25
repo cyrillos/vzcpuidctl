@@ -23,6 +23,7 @@ int main(int argc, char *argv[])
 		{"use-cpuid-override",	no_argument,		0,	1000 },
 		{"cpuid-override-path",	required_argument,	0,	1010 },
 		{"write-cpuid-override",no_argument,		0,	1020 },
+		{"log-file",		required_argument,	0,	1030 },
 		{ },
 	};
 	int log_level = LOG_DEBUG;
@@ -87,6 +88,9 @@ int main(int argc, char *argv[])
 		case 1020:
 			opts.write_cpuid_override = true;
 			break;
+		case 1030:
+			opts.log_path = optarg;
+			break;
 		default:
 			pr_err("?? getopt returned character code 0%o ??\n", c);
 			exit(1);
@@ -98,6 +102,11 @@ int main(int argc, char *argv[])
 
 	if (optind >= argc)
 		goto print_help;
+
+	if (opts.log_path) {
+		if (log_open(opts.log_path))
+			exit(1);
+	}
 
 	if (!opts.cpuid_override_path)
 		opts.cpuid_override_path = VZ_CPUID_OVERRIDE_PATH_DEFAULT;
@@ -124,6 +133,7 @@ int main(int argc, char *argv[])
 	INIT_LIST_HEAD(&opts.list_data_decoded);
 	INIT_LIST_HEAD(&opts.list_data);
 	INIT_LIST_HEAD(&opts.list_data_path);
+	log_close();
 
 	return 0;
 
@@ -135,6 +145,7 @@ print_help:
 "\n"
 "Common options\n"
 "       -v[level]       Verbosity level, [0-4]. Default: 4\n"
+"       --log-file PATH Use PATH for log records output\n"
 "       -h,--help       Print this help\n"
 "\n"
 "Options for xsave-encode command\n"

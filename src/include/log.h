@@ -5,6 +5,8 @@
 #include <errno.h>
 #include <stdarg.h>
 
+extern int log_open(const char *path);
+extern void log_close(void);
 extern void vprint_on_level(unsigned int loglevel, const char *format, va_list params);
 extern void log_set_loglevel(unsigned int level);
 extern unsigned int log_get_loglevel(void);

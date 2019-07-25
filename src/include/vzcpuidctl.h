@@ -13,7 +13,9 @@ typedef struct {
 
 typedef struct {
 	char			*out_fd_path;
+
 	int			log_level;
+	char			*log_path;
 
 	char			*cpuid_override_path;
 	bool			parse_cpuid_override;
