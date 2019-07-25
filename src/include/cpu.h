@@ -7,6 +7,7 @@
 #include <sys/types.h>
 
 #include "compiler.h"
+#include "log.h"
 
 /*
  * Adopted from linux kernel and enhanced from Intel/AMD manuals.
@@ -630,6 +631,9 @@ extern unsigned int nr_vz_cpuid_override_entries;
 static inline void native_cpuid(unsigned int *eax, unsigned int *ebx,
 				unsigned int *ecx, unsigned int *edx)
 {
+	pr_debug("native_cpuid in : eax 0x%08x ebx 0x%08x ecx 0x%08x edx 0x%08x\n",
+		 *eax, *ebx, *ecx, *edx);
+
 	/* ecx is often an input as well as an output. */
 	asm volatile("cpuid"
 	    : "=a" (*eax),
@@ -638,6 +642,9 @@ static inline void native_cpuid(unsigned int *eax, unsigned int *ebx,
 	      "=d" (*edx)
 	    : "0" (*eax), "2" (*ecx)
 	    : "memory");
+
+	pr_debug("native_cpuid out: eax 0x%08x ebx 0x%08x ecx 0x%08x edx 0x%08x\n",
+		 *eax, *ebx, *ecx, *edx);
 }
 
 static inline void cpuid(unsigned int op,

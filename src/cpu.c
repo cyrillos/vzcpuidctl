@@ -101,6 +101,8 @@ static inline void vz_cpuid(unsigned int op,
 		*ebx = e->ebx;
 		*ecx = e->ecx;
 		*edx = e->edx;
+		pr_debug("vz_cpuid: op 0x%08x: eax 0x%08x ebx 0x%08x ecx 0x%08x edx 0x%08x\n",
+			 op, *eax, *ebx, *ecx, *edx);
 	} else
 		cpuid(op, eax, ebx, ecx, edx);
 }
@@ -117,6 +119,8 @@ static inline void vz_cpuid_count(unsigned int op, int count,
 		*ebx = e->ebx;
 		*ecx = e->ecx;
 		*edx = e->edx;
+		pr_debug("vz_cpuid: op 0x%08x count 0x%08x: eax 0x%08x ebx 0x%08x ecx 0x%08x edx 0x%08x\n",
+			 op, count, *eax, *ebx, *ecx, *edx);
 	 } else
 		 cpuid_count(op, count, eax, ebx, ecx, edx);
 }
