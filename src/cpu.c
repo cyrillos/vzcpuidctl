@@ -14,12 +14,16 @@
 vz_cpuid_override_entry_t *vz_cpuid_override_entries;
 unsigned int nr_vz_cpuid_override_entries;
 
-int vz_cpu_parse_cpuid_override(void)
+int vz_cpu_parse_cpuid_override(char *path)
 {
-	static const char path[] = "/proc/vz/cpuid_override";
 	int ret = -1;
 	char s[256];
 	FILE *f;
+
+	if (!path) {
+		pr_err("No path provided\n");
+		return -1;
+	}
 
 	pr_debug("Parsing %s\n", path);
 

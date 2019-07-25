@@ -625,6 +625,8 @@ typedef struct {
 extern vz_cpuid_override_entry_t *vz_cpuid_override_entries;
 extern unsigned int nr_vz_cpuid_override_entries;
 
+#define VZ_CPUID_OVERRIDE_PATH_DEFAULT "/proc/vz/cpuid_override"
+
 static inline void native_cpuid(unsigned int *eax, unsigned int *ebx,
 				unsigned int *ecx, unsigned int *edx)
 {
@@ -688,7 +690,7 @@ static inline unsigned int cpuid_edx(unsigned int op)
 	return edx;
 }
 
-extern int vz_cpu_parse_cpuid_override(void);
+extern int vz_cpu_parse_cpuid_override(char *path);
 extern int fetch_cpuid(cpuinfo_x86_t *c);
 
 #endif /* VZCPUIDCTL_CPU_H__ */

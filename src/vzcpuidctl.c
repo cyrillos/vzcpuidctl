@@ -150,9 +150,6 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 		return -1;
 	}
 
-	if (vz_cpu_parse_cpuid_override())
-		return -1;
-
 #define __alloc_entry(__item, __e)			\
 	do {						\
 		__item = xzalloc(sizeof(*__item));	\

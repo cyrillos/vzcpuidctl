@@ -21,7 +21,8 @@ int main(int argc, char *argv[])
 		{"data",		required_argument,	0,	'd' },
 		{"data-file",		required_argument,	0,	'f' },
 		{"output",		required_argument,	0,	'o' },
-		{"use-cpuid_override",	required_argument,	0,	1000 },
+		{"use-cpuid_override",	no_argument,		0,	1000 },
+		{"cpuid_override-path",	required_argument,	0,	1010 },
 		{ },
 	};
 	int log_level = LOG_DEBUG;
@@ -81,8 +82,10 @@ int main(int argc, char *argv[])
 			goto print_help;
 			break;
 		case 1000:
-			if (vz_cpu_parse_cpuid_override())
-				exit(1);
+			opts.use_cpuid_override = true;
+			break;
+		case 1010:
+			opts.cpuid_override_path = optarg;
 			break;
 		default:
 			pr_err("?? getopt returned character code 0%o ??\n", c);
@@ -95,6 +98,14 @@ int main(int argc, char *argv[])
 
 	if (optind >= argc)
 		goto print_help;
+
+	if (!opts.cpuid_override_path)
+		opts.cpuid_override_path = VZ_CPUID_OVERRIDE_PATH_DEFAULT;
+
+	if (opts.use_cpuid_override) {
+		if (vz_cpu_parse_cpuid_override(opts.cpuid_override_path))
+			exit(1);
+	}
 
 	if (!strcmp(argv[optind], "xsave-encode")) {
 		if (vzcpuidctl_xsave_encode(&opts))
