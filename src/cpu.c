@@ -127,28 +127,28 @@ static inline void vz_cpuid_count(unsigned int op, int count,
 
 static inline unsigned int vz_cpuid_eax(unsigned int op)
 {
-	unsigned int eax, ebx, ecx, edx;
+	unsigned int eax = 0, ebx = 0, ecx = 0, edx = 0;
 	vz_cpuid(op, &eax, &ebx, &ecx, &edx);
 	return eax;
 }
 
 static inline unsigned int vz_cpuid_ebx(unsigned int op)
 {
-	unsigned int eax, ebx, ecx, edx;
+	unsigned int eax = 0, ebx = 0, ecx = 0, edx = 0;
 	vz_cpuid(op, &eax, &ebx, &ecx, &edx);
 	return ebx;
 }
 
 static inline unsigned int vz_cpuid_ecx(unsigned int op)
 {
-	unsigned int eax, ebx, ecx, edx;
+	unsigned int eax = 0, ebx = 0, ecx = 0, edx = 0;
 	vz_cpuid(op, &eax, &ebx, &ecx, &edx);
 	return ecx;
 }
 
 static inline unsigned int vz_cpuid_edx(unsigned int op)
 {
-	unsigned int eax, ebx, ecx, edx;
+	unsigned int eax = 0, ebx = 0, ecx = 0, edx = 0;
 	vz_cpuid(op, &eax, &ebx, &ecx, &edx);
 	return edx;
 }
@@ -219,6 +219,8 @@ static int fetch_fpuid(cpuinfo_x86_t *c)
 	uint32_t eax, ebx, ecx, edx;
 	size_t i;
 
+#define __zap_regs() eax = ebx = ecx = edx = 0
+
 	BUILD_BUG_ON(ARRAY_SIZE(xsave_cpuid_features) !=
 		     ARRAY_SIZE(xfeature_names));
 
@@ -234,6 +236,7 @@ static int fetch_fpuid(cpuinfo_x86_t *c)
 		return 0;
 	}
 
+	__zap_regs();
 	vz_cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx);
 	c->xfeatures_mask = eax + ((uint64_t)edx << 32);
 
@@ -262,10 +265,12 @@ static int fetch_fpuid(cpuinfo_x86_t *c)
 	 * xsaves is not enabled in userspace, so
 	 * xsaves is mostly for debug purpose.
 	 */
+	__zap_regs();
 	vz_cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx);
 	c->xsave_size = ebx;
 	c->xsave_size_max = ecx;
 
+	__zap_regs();
 	vz_cpuid_count(XSTATE_CPUID, 1, &eax, &ebx, &ecx, &edx);
 	c->xsaves_size = ebx;
 
@@ -307,6 +312,7 @@ static int fetch_fpuid(cpuinfo_x86_t *c)
 		 * ECX[0] return 0; if state component i is a supervisor
 		 * state component, ECX[0] returns 1.
 		 */
+		__zap_regs();
 		vz_cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx);
 		if (!(ecx & 1))
 			c->xstate_offsets[i] = ebx;
@@ -359,6 +365,7 @@ static int fetch_fpuid(cpuinfo_x86_t *c)
 				 * of state component 'i' when the compacted format
 				 * of the extended region of an XSAVE area is used:
 				 */
+				__zap_regs();
 				vz_cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx);
 				if (ecx & 2)
 					c->xstate_comp_offsets[i] = ALIGN(c->xstate_comp_offsets[i], 64);
@@ -377,11 +384,14 @@ static int fetch_fpuid(cpuinfo_x86_t *c)
 	}
 
 	return 0;
+#undef __zap_regs
 }
 
 int fetch_cpuid(cpuinfo_x86_t *c)
 {
 	uint32_t eax, ebx, ecx, edx;
+
+#define __zap_regs() eax = ebx = ecx = edx = 0
 
 	/*
 	 * See cpu_detect() in the kernel, also
@@ -411,6 +421,7 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	/* Intel-defined flags: level 0x00000001 */
 	if (c->cpuid_level >= 0x00000001) {
+		__zap_regs();
 		vz_cpuid(0x00000001, &eax, &ebx, &ecx, &edx);
 		c->x86_family = (eax >> 8) & 0xf;
 		c->x86_model = (eax >> 4) & 0xf;
@@ -431,6 +442,7 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	/* Additional Intel-defined flags: level 0x00000007 */
 	if (c->cpuid_level >= 0x00000007) {
+		__zap_regs();
 		vz_cpuid_count(0x00000007, 0, &eax, &ebx, &ecx, &edx);
 		c->x86_capability[CPUID_7_0_EBX] = ebx;
 		c->x86_capability[CPUID_7_0_ECX] = ecx;
@@ -439,17 +451,20 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	/* Extended state features: level 0x0000000d */
 	if (c->cpuid_level >= 0x0000000d) {
+		__zap_regs();
 		vz_cpuid_count(0x0000000d, 1, &eax, &ebx, &ecx, &edx);
 		c->x86_capability[CPUID_D_1_EAX] = eax;
 	}
 
 	/* Additional Intel-defined flags: level 0x0000000F */
 	if (c->cpuid_level >= 0x0000000F) {
+		__zap_regs();
 		/* QoS sub-leaf, EAX=0Fh, ECX=0 */
 		vz_cpuid_count(0x0000000F, 0, &eax, &ebx, &ecx, &edx);
 		c->x86_capability[CPUID_F_0_EDX] = edx;
 
 		if (test_cpu_cap(c, X86_FEATURE_CQM_LLC)) {
+			__zap_regs();
 			/* QoS sub-leaf, EAX=0Fh, ECX=1 */
 			vz_cpuid_count(0x0000000F, 1, &eax, &ebx, &ecx, &edx);
 			c->x86_capability[CPUID_F_1_EDX] = edx;
@@ -462,6 +477,7 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	if ((eax & 0xffff0000) == 0x80000000) {
 		if (eax >= 0x80000001) {
+			__zap_regs();
 			vz_cpuid(0x80000001, &eax, &ebx, &ecx, &edx);
 
 			c->x86_capability[CPUID_8000_0001_ECX] = ecx;
@@ -503,6 +519,7 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 	}
 
 	if (c->extended_cpuid_level >= 0x80000007) {
+		__zap_regs();
 		vz_cpuid(0x80000007, &eax, &ebx, &ecx, &edx);
 
 		c->x86_capability[CPUID_8000_0007_EBX] = ebx;
@@ -573,4 +590,5 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 		 c->x86_family, c->x86_vendor_id, c->x86_model_id);
 
 	return fetch_fpuid(c);
+#undef __zap_regs
 }
