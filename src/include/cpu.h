@@ -9,9 +9,6 @@
 #include "cpuid.h"
 #include "fpu.h"
 
-extern short xsave_cpuid_features[];
-extern const char * const xfeature_names[];
-
 typedef struct cpuinfo_x86 {
 	/* cpu context */
 	uint8_t			x86_family;

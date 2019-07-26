@@ -19,6 +19,7 @@ add_custom_target(tags
 set(SOURCES
 	"src/mpack/mpack.c"
 	"src/cpu.c"
+	"src/fpu.c"
 	"src/cpuid.c"
 	"src/log.c"
 	"src/base64.c"

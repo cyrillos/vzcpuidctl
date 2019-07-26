@@ -1,0 +1,227 @@
+#include <string.h>
+#include <stdbool.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "bitops.h"
+#include "cpu.h"
+#include "log.h"
+
+#undef	LOG_PREFIX
+#define LOG_PREFIX "fpu: "
+
+/*
+ * Although we spell it out in here, the Processor Trace
+ * xfeature is completely unused. We use other mechanisms
+ * to save/restore PT state in Linux.
+ */
+
+static const char * const xfeature_names[] = {
+	"x87 floating point registers"	,
+	"SSE registers"			,
+	"AVX registers"			,
+	"MPX bounds registers"		,
+	"MPX CSR"			,
+	"AVX-512 opmask"		,
+	"AVX-512 Hi256"			,
+	"AVX-512 ZMM_Hi256"		,
+	"Processor Trace"		,
+	"Protection Keys User registers",
+	"Hardware Duty Cycling"		,
+};
+
+static short xsave_cpuid_features[] = {
+	X86_FEATURE_FPU,
+	X86_FEATURE_XMM,
+	X86_FEATURE_AVX,
+	X86_FEATURE_MPX,
+	X86_FEATURE_MPX,
+	X86_FEATURE_AVX512F,
+	X86_FEATURE_AVX512F,
+	X86_FEATURE_AVX512F,
+	X86_FEATURE_INTEL_PT,
+	X86_FEATURE_PKU,
+	X86_FEATURE_HDC,
+};
+
+void show_fpu_info(struct cpuinfo_x86 *c)
+{
+	size_t i;
+
+	pr_info("xfeatures_mask 0x%llx xsave_size %u xsave_size_max %u xsaves_size %u\n",
+		(unsigned long long)c->xfeatures_mask,
+		c->xsave_size, c->xsave_size_max, c->xsaves_size);
+
+	if (!pr_quelled(LOG_INFO)) {
+		for (i = 0; i < ARRAY_SIZE(c->xstate_offsets); i++) {
+			if (!(c->xfeatures_mask & (1UL << i)))
+				continue;
+			pr_info("%-32s xstate_offsets %6d / %-6d xstate_sizes %6d / %-6d\n",
+				xfeature_names[i], c->xstate_offsets[i], c->xstate_comp_offsets[i],
+				c->xstate_sizes[i], c->xstate_comp_sizes[i]);
+		}
+	}
+}
+
+int fetch_fpuid(struct cpuinfo_x86 *c)
+{
+	const cpuid_ops_t *cpuid_ops = cpuid_get_ops();
+	unsigned int last_good_offset;
+	uint32_t eax, ebx, ecx, edx;
+	size_t i;
+
+#define __zap_regs() eax = ebx = ecx = edx = 0
+
+	BUILD_BUG_ON(ARRAY_SIZE(xsave_cpuid_features) !=
+		     ARRAY_SIZE(xfeature_names));
+
+	if (!test_cpu_cap(c, X86_FEATURE_FPU)) {
+		pr_err("No FPU detected\n");
+		return -1;
+	}
+
+	if (!test_cpu_cap(c, X86_FEATURE_XSAVE)) {
+		pr_info("x87 FPU will use %s\n",
+			test_cpu_cap(c, X86_FEATURE_FXSR) ?
+			"FXSAVE" : "FSAVE");
+		return 0;
+	}
+
+	__zap_regs();
+	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx);
+	c->xfeatures_mask = eax + ((uint64_t)edx << 32);
+
+	if ((c->xfeatures_mask & XFEATURE_MASK_FPSSE) != XFEATURE_MASK_FPSSE) {
+		/*
+		 * This indicates that something really unexpected happened
+		 * with the enumeration.
+		 */
+		pr_err("FP/SSE not present amongst the CPU's xstate features: 0x%llx\n",
+		       (unsigned long long)c->xfeatures_mask);
+		return -1;
+	}
+
+	/*
+	 * Clear XSAVE features that are disabled in the normal CPUID.
+	 */
+	for (i = 0; i < ARRAY_SIZE(xsave_cpuid_features); i++) {
+		if (!test_cpu_cap(c, xsave_cpuid_features[i]))
+			c->xfeatures_mask &= ~(1 << i);
+	}
+
+	c->xfeatures_mask &= XCNTXT_MASK;
+	c->xfeatures_mask &= ~XFEATURE_MASK_SUPERVISOR;
+
+	/*
+	 * xsaves is not enabled in userspace, so
+	 * xsaves is mostly for debug purpose.
+	 */
+	__zap_regs();
+	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx);
+	c->xsave_size = ebx;
+	c->xsave_size_max = ecx;
+
+	__zap_regs();
+	cpuid_ops->cpuid_count(XSTATE_CPUID, 1, &eax, &ebx, &ecx, &edx);
+	c->xsaves_size = ebx;
+
+	if (c->xsave_size_max > sizeof(struct xsave_struct))
+		pr_warn_once("max xsave frame exceed xsave_struct (%u %u)\n",
+			     c->xsave_size_max, (unsigned)sizeof(struct xsave_struct));
+
+	memset(c->xstate_offsets, 0xff, sizeof(c->xstate_offsets));
+	memset(c->xstate_sizes, 0xff, sizeof(c->xstate_sizes));
+	memset(c->xstate_comp_offsets, 0xff, sizeof(c->xstate_comp_offsets));
+	memset(c->xstate_comp_sizes, 0xff, sizeof(c->xstate_comp_sizes));
+
+	/* start at the beginnning of the "extended state" */
+	last_good_offset = offsetof(struct xsave_struct, extended_state_area);
+
+	/*
+	 * The FP xstates and SSE xstates are legacy states. They are always
+	 * in the fixed offsets in the xsave area in either compacted form
+	 * or standard form.
+	 */
+	c->xstate_offsets[0]	= 0;
+	c->xstate_sizes[0]	= offsetof(struct i387_fxsave_struct, xmm_space);
+	c->xstate_offsets[1]	= c->xstate_sizes[0];
+	c->xstate_sizes[1]	= FIELD_SIZEOF(struct i387_fxsave_struct, xmm_space);
+
+	for (i = FIRST_EXTENDED_XFEATURE; i < XFEATURE_MAX; i++) {
+		if (!(c->xfeatures_mask & (1UL << i)))
+			continue;
+
+		/*
+		 * If an xfeature is supervisor state, the offset
+		 * in EBX is invalid. We leave it to -1.
+		 *
+		 * SDM says: If state component 'i' is a user state component,
+		 * ECX[0] return 0; if state component i is a supervisor
+		 * state component, ECX[0] returns 1.
+		 */
+		__zap_regs();
+		cpuid_ops->cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx);
+		if (!(ecx & 1))
+			c->xstate_offsets[i] = ebx;
+
+		c->xstate_sizes[i] = eax;
+
+		/*
+		 * In our xstate size checks, we assume that the
+		 * highest-numbered xstate feature has the
+		 * highest offset in the buffer.  Ensure it does.
+		 */
+		if (last_good_offset > c->xstate_offsets[i])
+			pr_warn_once("misordered xstate %d %d\n",
+				     last_good_offset, c->xstate_offsets[i]);
+
+		last_good_offset = c->xstate_offsets[i];
+	}
+
+	BUILD_BUG_ON(sizeof(c->xstate_offsets) != sizeof(c->xstate_sizes));
+	BUILD_BUG_ON(sizeof(c->xstate_comp_offsets) != sizeof(c->xstate_comp_sizes));
+
+	c->xstate_comp_offsets[0]	= 0;
+	c->xstate_comp_sizes[0]		= offsetof(struct i387_fxsave_struct, xmm_space);
+	c->xstate_comp_offsets[1]	= c->xstate_comp_sizes[0];
+	c->xstate_comp_sizes[1]		= FIELD_SIZEOF(struct i387_fxsave_struct, xmm_space);
+
+	if (!test_cpu_cap(c, X86_FEATURE_XSAVES)) {
+		for (i = FIRST_EXTENDED_XFEATURE; i < XFEATURE_MAX; i++) {
+			if ((c->xfeatures_mask & (1UL << i))) {
+				c->xstate_comp_offsets[i] = c->xstate_offsets[i];
+				c->xstate_comp_sizes[i] = c->xstate_sizes[i];
+			}
+		}
+	} else {
+		c->xstate_comp_offsets[FIRST_EXTENDED_XFEATURE] =
+			FXSAVE_SIZE + XSAVE_HDR_SIZE;
+
+		for (i = FIRST_EXTENDED_XFEATURE; i < XFEATURE_MAX; i++) {
+			if ((c->xfeatures_mask & (1UL << i)))
+				c->xstate_comp_sizes[i] = c->xstate_sizes[i];
+			else
+				c->xstate_comp_sizes[i] = 0;
+
+			if (i > FIRST_EXTENDED_XFEATURE) {
+				c->xstate_comp_offsets[i] = c->xstate_comp_offsets[i-1]
+					+ c->xstate_comp_sizes[i-1];
+
+				/*
+				 * The value returned by ECX[1] indicates the alignment
+				 * of state component 'i' when the compacted format
+				 * of the extended region of an XSAVE area is used:
+				 */
+				__zap_regs();
+				cpuid_ops->cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx);
+				if (ecx & 2)
+					c->xstate_comp_offsets[i] = ALIGN(c->xstate_comp_offsets[i], 64);
+			}
+		}
+	}
+
+	show_fpu_info(c);
+	return 0;
+#undef __zap_regs
+}

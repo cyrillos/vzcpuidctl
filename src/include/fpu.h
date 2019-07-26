@@ -248,4 +248,9 @@ struct xsave_struct {
 	};
 } __aligned(FP_MIN_ALIGN_BYTES);
 
+struct cpuinfo_x86;
+
+extern void show_fpu_info(struct cpuinfo_x86 *c);
+extern int fetch_fpuid(struct cpuinfo_x86 *c);
+
 #endif /* VZCPUIDCTL_FPU_H__ */

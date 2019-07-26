@@ -96,25 +96,6 @@ err:
 	return -1;
 }
 
-static void show_fpu_info(cpuinfo_x86_t *c)
-{
-	size_t i;
-
-	pr_info("fpu: xfeatures_mask 0x%llx xsave_size %u xsave_size_max %u xsaves_size %u\n",
-		(unsigned long long)c->xfeatures_mask,
-		c->xsave_size, c->xsave_size_max, c->xsaves_size);
-
-	if (!pr_quelled(LOG_INFO)) {
-		for (i = 0; i < ARRAY_SIZE(c->xstate_offsets); i++) {
-			if (!(c->xfeatures_mask & (1UL << i)))
-				continue;
-			pr_info("fpu: %-32s xstate_offsets %6d / %-6d xstate_sizes %6d / %-6d\n",
-				xfeature_names[i], c->xstate_offsets[i], c->xstate_comp_offsets[i],
-				c->xstate_sizes[i], c->xstate_comp_sizes[i]);
-		}
-	}
-}
-
 static int generate_override_entry(char *where, size_t size, cpuid_override_entry_t *e)
 {
 	if (e->has_count) {
