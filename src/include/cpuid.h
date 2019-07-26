@@ -6,6 +6,7 @@
 #include "x86-cpuid.h"
 
 #define CPUID_OVERRIDE_PATH_DEFAULT "/proc/vz/cpuid_override"
+
 /*
  * VZ specific cpuid VE masking: the kernel provides
  * the following entry /proc/vz/cpuid_override which
