@@ -129,12 +129,14 @@ int main(int argc, char *argv[])
 		goto out;
 
 	if (!opts.cpuid_override_path)
-		opts.cpuid_override_path = VZ_CPUID_OVERRIDE_PATH_DEFAULT;
+		opts.cpuid_override_path = CPUID_OVERRIDE_PATH_DEFAULT;
 
 	if (opts.parse_cpuid_override) {
-		if (vz_cpu_parse_cpuid_override(opts.cpuid_override_path))
+		if (cpuid_override_init(opts.cpuid_override_path))
 			goto out;
-	}
+		cpuid_register(&cpuid_ops_override);
+	} else
+		cpuid_register(&cpuid_ops_native);
 
 	if (!strcmp(argv[optind], "xsave-encode")) {
 		if (cpuidctl_xsave_encode(&opts))
@@ -164,7 +166,7 @@ print_help:
 "Options for xsave-encode command\n"
 "  --cpuid-override-path PATH\n"
 "       Use PATH for system cpuid_override procfs,\n"
-"       instead of " VZ_CPUID_OVERRIDE_PATH_DEFAULT "\n"
+"       instead of " CPUID_OVERRIDE_PATH_DEFAULT "\n"
 "  --use-cpuid-override\n"
 "       When parsing cpuid consider already masked values in cpuid_override procfs,\n"
 "       otherwise native cpuid calls are used\n"
@@ -174,7 +176,7 @@ print_help:
 "Options for xsave-generate command\n"
 "  --cpuid-override-path PATH\n"
 "       Use PATH for system cpuid_override procfs,\n"
-"       instead of " VZ_CPUID_OVERRIDE_PATH_DEFAULT "\n"
+"       instead of " CPUID_OVERRIDE_PATH_DEFAULT "\n"
 "  -d,--data STRING\n"
 "       Use STRING as encoded data previously generated with xsave-encode\n"
 "  -f,--data-file PATH\n"

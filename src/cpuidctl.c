@@ -115,7 +115,7 @@ static void show_fpu_info(cpuinfo_x86_t *c)
 	}
 }
 
-static int generate_override_entry(char *where, size_t size, vz_cpuid_override_entry_t *e)
+static int generate_override_entry(char *where, size_t size, cpuid_override_entry_t *e)
 {
 	if (e->has_count) {
 		return snprintf(where, size,
@@ -138,16 +138,16 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 	size_t i;
 
 	struct override_list_entry {
-		struct list_head		list;
-		vz_cpuid_override_entry_t	entry;
+		struct list_head	list;
+		cpuid_override_entry_t	entry;
 	};
 
 	struct override_list_entry *item, *tmp;
-	vz_cpuid_override_entry_t *e;
+	cpuid_override_entry_t *e;
 
 	LIST_HEAD(override_entries_list);
 
-	if (vz_cpuid_override_entries) {
+	if (cpuid_override_entries) {
 		pr_err("override already read!\n");
 		return -1;
 	}
@@ -228,8 +228,8 @@ static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
 	end = buf + buf_size;
 	pos = buf;
 
-	for (i = 0; i < nr_vz_cpuid_override_entries; i++) {
-		e = &vz_cpuid_override_entries[i];
+	for (i = 0; i < nr_cpuid_override_entries; i++) {
+		e = &cpuid_override_entries[i];
 
 		/* Skip old entries */
 		if (e->op == XSTATE_CPUID)

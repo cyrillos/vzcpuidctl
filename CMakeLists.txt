@@ -18,6 +18,7 @@ add_custom_target(tags
 set(SOURCES
 	"src/mpack/mpack.c"
 	"src/cpu.c"
+	"src/cpuid.c"
 	"src/log.c"
 	"src/base64.c"
 	"src/cpuidctl.c"
@@ -29,6 +30,8 @@ set(HEADERS
 	"src/include/bitops.h"
 	"src/include/compiler.h"
 	"src/include/cpu.h"
+	"src/include/cpuid.h"
+	"src/include/x86-cpuid.h"
 	"src/include/err.h"
 	"src/include/log.h"
 	"src/include/list.h"
