@@ -29,11 +29,11 @@ typedef struct {
 extern opts_t opts;
 
 enum {
-	VZCPUID_NONE		= 0,
-	VZCPUID_FULL		= 1,
-	VZCPUID_XSAVE		= 2,
+	CPUID_NONE		= 0,
+	CPUID_FULL		= 1,
+	CPUID_XSAVE		= 2,
 
-	VZCPUID_MAX,
+	CPUID_MAX,
 };
 
 typedef struct {
@@ -41,12 +41,12 @@ typedef struct {
 	union {
 		cpuinfo_x86_t	c;
 	};
-} vzcpuid_rec_t;
+} cpuid_rec_t;
 
 typedef struct {
 	struct list_head	list;
-	vzcpuid_rec_t		rec;
-} vzcpuid_rec_entry_t;
+	cpuid_rec_t		rec;
+} cpuid_rec_entry_t;
 
 extern int cpuidctl_xsave_encode(opts_t *opts);
 extern int cpuidctl_xsave_generate(opts_t *opts);

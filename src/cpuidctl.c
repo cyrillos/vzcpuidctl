@@ -17,12 +17,12 @@
 
 int cpuidctl_xsave_encode(opts_t *opts)
 {
-	vzcpuid_rec_t rec = { };
+	cpuid_rec_t rec = { };
 	char *encoded = NULL;
 	ssize_t ret = -1;
 	int out_fd = -1;
 
-	rec.type = VZCPUID_FULL;
+	rec.type = CPUID_FULL;
 	if (fetch_cpuid(&rec.c))
 		return -1;
 
@@ -108,7 +108,7 @@ static int generate_override_entry(char *where, size_t size, cpuid_override_entr
 			e->op, e->eax, e->ebx, e->ecx, e->edx);
 }
 
-static int generate_cpuid_override(opts_t *opts, vzcpuid_rec_entry_t *entry)
+static int generate_cpuid_override(opts_t *opts, cpuid_rec_entry_t *entry)
 {
 	cpuinfo_x86_t *c =  &entry->rec.c;
 	char *buf = NULL, *pos, *end;
@@ -268,7 +268,7 @@ out:
 
 static int read_data_files(opts_t *opts)
 {
-	size_t encoded_size = b64_encoded_size(sizeof(vzcpuid_rec_t));
+	size_t encoded_size = b64_encoded_size(sizeof(cpuid_rec_t));
 	str_entry_t *sl, *new = NULL;
 	struct stat st;
 	int fd = -1;
@@ -330,8 +330,8 @@ cant_read:
 
 int cpuidctl_xsave_generate(opts_t *opts)
 {
-	size_t encoded_size = b64_encoded_size(sizeof(vzcpuid_rec_t));
-	vzcpuid_rec_entry_t *entry, *tmp;
+	size_t encoded_size = b64_encoded_size(sizeof(cpuid_rec_t));
+	cpuid_rec_entry_t *entry, *tmp;
 	size_t min_size = SIZE_MAX;
 	LIST_HEAD(records_head);
 	cpuinfo_x86_t *c;
@@ -364,7 +364,7 @@ int cpuidctl_xsave_generate(opts_t *opts)
 			goto out;
 		}
 
-		if (entry->rec.type != VZCPUID_FULL) {
+		if (entry->rec.type != CPUID_FULL) {
 			pr_err("Corrupted data in record\n");
 			xfree(entry);
 			goto out;
