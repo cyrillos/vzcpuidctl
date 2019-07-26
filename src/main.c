@@ -8,9 +8,33 @@
 #include "cpuidctl.h"
 #include "xmalloc.h"
 
-opts_t opts = {
-	.log_level	= DEFAULT_LOGLEVEL,
-};
+opts_t opts;
+
+static void opts_init(opts_t *opts)
+{
+	memset(opts, 0, sizeof(*opts));
+
+	INIT_LIST_HEAD(&opts->list_data_decoded);
+	INIT_LIST_HEAD(&opts->list_data);
+	INIT_LIST_HEAD(&opts->list_data_path);
+
+	opts->log_level = DEFAULT_LOGLEVEL;
+}
+
+static void opts_fini(opts_t *opts)
+{
+	str_entry_t *s, *tmp;
+
+	list_for_each_entry_safe(s, tmp, &opts->list_data, list) {
+		xfree(s->str);
+		xfree(s);
+	}
+
+	list_for_each_entry_safe(s, tmp, &opts->list_data_path, list)
+		xfree(s);
+
+	opts_init(opts);
+}
 
 int main(int argc, char *argv[])
 {
@@ -27,16 +51,14 @@ int main(int argc, char *argv[])
 		{ },
 	};
 	int log_level = LOG_DEBUG;
-	str_entry_t *s, *tmp;
-
-	INIT_LIST_HEAD(&opts.list_data_decoded);
-	INIT_LIST_HEAD(&opts.list_data);
-	INIT_LIST_HEAD(&opts.list_data_path);
+	int ret = 1;
 
 	if (argc < 2) {
 		goto print_help;
 		exit(1);
 	}
+
+	opts_init(&opts);
 
 	while (1) {
 		int opt_index = 0;
@@ -103,39 +125,30 @@ int main(int argc, char *argv[])
 	if (optind >= argc)
 		goto print_help;
 
-	if (opts.log_path) {
-		if (log_open(opts.log_path))
-			exit(1);
-	}
+	if (opts.log_path && log_open(opts.log_path))
+		goto out;
 
 	if (!opts.cpuid_override_path)
 		opts.cpuid_override_path = VZ_CPUID_OVERRIDE_PATH_DEFAULT;
 
 	if (opts.parse_cpuid_override) {
 		if (vz_cpu_parse_cpuid_override(opts.cpuid_override_path))
-			exit(1);
+			goto out;
 	}
 
 	if (!strcmp(argv[optind], "xsave-encode")) {
 		if (cpuidctl_xsave_encode(&opts))
-			exit(1);
+			goto out;
 	} else if (!strcmp(argv[optind], "xsave-generate")) {
 		if (cpuidctl_xsave_generate(&opts))
-			exit(1);
+			goto out;
 	}
 
-	list_for_each_entry_safe(s, tmp, &opts.list_data, list) {
-		xfree(s->str);
-		xfree(s);
-	}
-	list_for_each_entry_safe(s, tmp, &opts.list_data_path, list)
-		xfree(s);
-	INIT_LIST_HEAD(&opts.list_data_decoded);
-	INIT_LIST_HEAD(&opts.list_data);
-	INIT_LIST_HEAD(&opts.list_data_path);
+	ret = 0;
+out:
 	log_close();
-
-	return 0;
+	opts_fini(&opts);
+	return ret;
 
 print_help:
 	pr_msg(
