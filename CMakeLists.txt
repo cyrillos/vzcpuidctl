@@ -6,6 +6,7 @@ add_compile_options(-DCONFIG_X86_64)
 add_compile_options(-D_FILE_OFFSET_BITS=64)
 add_compile_options(-D_GNU_SOURCE)
 add_compile_options(-Wall -Wformat-security)
+add_compile_options(-std=gnu99)
 
 include_directories(src/include)
 include_directories(src/mpack)
