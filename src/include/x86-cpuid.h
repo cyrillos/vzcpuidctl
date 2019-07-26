@@ -331,4 +331,11 @@ static inline void x86_native_cpuid(uint32_t *eax, uint32_t *ebx,
 	    : "memory");
 }
 
+typedef struct x86_cpuid_args {
+	uint32_t	eax;
+	uint32_t	ebx;
+	uint32_t	ecx;
+	uint32_t	edx;
+} x86_cpuid_args_t;
+
 #endif /* VZCPUIDCTL_X86CPUID_H__ */
