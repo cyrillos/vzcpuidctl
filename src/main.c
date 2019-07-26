@@ -5,7 +5,7 @@
 
 #include "log.h"
 #include "cpu.h"
-#include "vzcpuidctl.h"
+#include "cpuidctl.h"
 #include "xmalloc.h"
 
 opts_t opts = {
@@ -117,10 +117,10 @@ int main(int argc, char *argv[])
 	}
 
 	if (!strcmp(argv[optind], "xsave-encode")) {
-		if (vzcpuidctl_xsave_encode(&opts))
+		if (cpuidctl_xsave_encode(&opts))
 			exit(1);
 	} else if (!strcmp(argv[optind], "xsave-generate")) {
-		if (vzcpuidctl_xsave_generate(&opts))
+		if (cpuidctl_xsave_generate(&opts))
 			exit(1);
 	}
 

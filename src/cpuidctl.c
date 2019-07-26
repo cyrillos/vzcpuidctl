@@ -10,12 +10,12 @@
 #include "log.h"
 #include "xmalloc.h"
 #include "base64.h"
-#include "vzcpuidctl.h"
+#include "cpuidctl.h"
 
 #undef	LOG_PREFIX
-#define LOG_PREFIX "vzcpuidctl: "
+#define LOG_PREFIX "cpuidctl: "
 
-int vzcpuidctl_xsave_encode(opts_t *opts)
+int cpuidctl_xsave_encode(opts_t *opts)
 {
 	vzcpuid_rec_t rec = { };
 	char *encoded = NULL;
@@ -347,7 +347,7 @@ cant_read:
 	return -1;
 }
 
-int vzcpuidctl_xsave_generate(opts_t *opts)
+int cpuidctl_xsave_generate(opts_t *opts)
 {
 	size_t encoded_size = b64_encoded_size(sizeof(vzcpuid_rec_t));
 	vzcpuid_rec_entry_t *entry, *tmp;

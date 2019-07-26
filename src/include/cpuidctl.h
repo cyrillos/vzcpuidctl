@@ -48,7 +48,7 @@ typedef struct {
 	vzcpuid_rec_t		rec;
 } vzcpuid_rec_entry_t;
 
-extern int vzcpuidctl_xsave_encode(opts_t *opts);
-extern int vzcpuidctl_xsave_generate(opts_t *opts);
+extern int cpuidctl_xsave_encode(opts_t *opts);
+extern int cpuidctl_xsave_generate(opts_t *opts);
 
 #endif /* VZCPUIDCTL_H__ */
