@@ -35,12 +35,18 @@ extern unsigned int nr_cpuid_override_entries;
 typedef struct {
 	const char *description;
 
-	void (*cpuid)(uint32_t op, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx);
-	void (*cpuid_count)(uint32_t op, uint32_t count, uint32_t *eax, uint32_t *ebx, uint32_t *ecx, uint32_t *edx);
-	uint32_t (*cpuid_eax)(uint32_t op);
-	uint32_t (*cpuid_ebx)(uint32_t op);
-	uint32_t (*cpuid_ecx)(uint32_t op);
-	uint32_t (*cpuid_edx)(uint32_t op);
+	void (*cpuid)(uint32_t op,
+		      uint32_t *eax, uint32_t *ebx,
+		      uint32_t *ecx, uint32_t *edx,
+		      x86_cpuid_call_trace_t *ct);
+	void (*cpuid_count)(uint32_t op, uint32_t count,
+			    uint32_t *eax, uint32_t *ebx,
+			    uint32_t *ecx, uint32_t *edx,
+			    x86_cpuid_call_trace_t *ct);
+	uint32_t (*cpuid_eax)(uint32_t op, x86_cpuid_call_trace_t *ct);
+	uint32_t (*cpuid_ebx)(uint32_t op, x86_cpuid_call_trace_t *ct);
+	uint32_t (*cpuid_ecx)(uint32_t op, x86_cpuid_call_trace_t *ct);
+	uint32_t (*cpuid_edx)(uint32_t op, x86_cpuid_call_trace_t *ct);
 } cpuid_ops_t;
 
 extern const cpuid_ops_t cpuid_ops_native;

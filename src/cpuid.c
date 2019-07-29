@@ -1,9 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdbool.h>
 
+#include "compiler.h"
 #include "cpuid.h"
 #include "log.h"
+#include "bug.h"
 
 #include "xmalloc.h"
 
@@ -12,13 +15,39 @@
 
 const cpuid_ops_t *cpuid_ops;
 
+static void call_trace_put(x86_cpuid_call_trace_t *ct, bool in,
+			   uint32_t *eax, uint32_t *ebx,
+			   uint32_t *ecx, uint32_t *edx)
+{
+	if (ct) {
+		x86_cpuid_args_t *args = in ?
+			&ct->in[ct->nr_in] :
+			&ct->out[ct->nr_out];
+
+		BUG_ON(ct->nr_in >= (in ? ARRAY_SIZE(ct->in) : ARRAY_SIZE(ct->out)));
+
+		args->eax = *eax;
+		args->ebx = *ebx;
+		args->ecx = *ecx;
+		args->edx = *edx;
+
+		if (in)
+			ct->nr_in++;
+		else
+			ct->nr_out++;
+	}
+}
+
 static void x86_native_cpuid_logged(uint32_t *eax, uint32_t *ebx,
-				    uint32_t *ecx, uint32_t *edx)
+				    uint32_t *ecx, uint32_t *edx,
+				    x86_cpuid_call_trace_t *ct)
 {
 	pr_debug("x86_cpuid in : eax 0x%08x ebx 0x%08x ecx 0x%08x edx 0x%08x\n",
 		 *eax, *ebx, *ecx, *edx);
 
+	call_trace_put(ct, true, eax, ebx, ecx, edx);
 	x86_native_cpuid(eax, ebx, ecx, edx);
+	call_trace_put(ct, false, eax, ebx, ecx, edx);
 
 	pr_debug("x86_cpuid out: eax 0x%08x ebx 0x%08x ecx 0x%08x edx 0x%08x\n",
 		 *eax, *ebx, *ecx, *edx);
@@ -26,45 +55,47 @@ static void x86_native_cpuid_logged(uint32_t *eax, uint32_t *ebx,
 
 static void x86_cpuid(uint32_t op,
 		      uint32_t *eax, uint32_t *ebx,
-		      uint32_t *ecx, uint32_t *edx)
+		      uint32_t *ecx, uint32_t *edx,
+		      x86_cpuid_call_trace_t *ct)
 {
 	*eax = op, *ecx = 0;
-	x86_native_cpuid_logged(eax, ebx, ecx, edx);
+	x86_native_cpuid_logged(eax, ebx, ecx, edx, ct);
 }
 
 static void x86_cpuid_count(uint32_t op, uint32_t count,
 			    uint32_t *eax, uint32_t *ebx,
-			    uint32_t *ecx, uint32_t *edx)
+			    uint32_t *ecx, uint32_t *edx,
+			    x86_cpuid_call_trace_t *ct)
 {
 	*eax = op, *ecx = count;
-	x86_native_cpuid_logged(eax, ebx, ecx, edx);
+	x86_native_cpuid_logged(eax, ebx, ecx, edx, ct);
 }
 
-static uint32_t x86_cpuid_eax(uint32_t op)
+static uint32_t x86_cpuid_eax(uint32_t op, x86_cpuid_call_trace_t *ct)
 {
 	uint32_t eax, ebx = 0, ecx, edx = 0;
-	x86_cpuid(op, &eax, &ebx, &ecx, &edx);
+	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);
 	return eax;
 }
 
-static uint32_t x86_cpuid_ebx(uint32_t op)
+static uint32_t x86_cpuid_ebx(uint32_t op, x86_cpuid_call_trace_t *ct)
 {
 	uint32_t eax, ebx = 0, ecx, edx = 0;
-	x86_cpuid(op, &eax, &ebx, &ecx, &edx);
+	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);
 	return ebx;
 }
 
-static uint32_t x86_cpuid_ecx(uint32_t op)
+static uint32_t x86_cpuid_ecx(uint32_t op, x86_cpuid_call_trace_t *ct)
 {
 	uint32_t eax, ebx = 0, ecx, edx = 0;
-	x86_cpuid(op, &eax, &ebx, &ecx, &edx);
+	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);
 	return ecx;
 }
 
-static uint32_t x86_cpuid_edx(uint32_t op)
+static uint32_t x86_cpuid_edx(uint32_t op, x86_cpuid_call_trace_t *ct)
 {
 	uint32_t eax, ebx = 0, ecx, edx = 0;
-	x86_cpuid(op, &eax, &ebx, &ecx, &edx);
+	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);
 	return edx;
 }
 
@@ -161,63 +192,69 @@ override_lookup(uint32_t op, uint32_t has_count, uint32_t count)
 
 static void vz_cpuid_logged(uint32_t op,
 			    uint32_t *eax, uint32_t *ebx,
-			    uint32_t *ecx, uint32_t *edx)
+			    uint32_t *ecx, uint32_t *edx,
+			    x86_cpuid_call_trace_t *ct)
 {
 	cpuid_override_entry_t *e = override_lookup(op, 0, 0);
 	if (e) {
+		call_trace_put(ct, true, eax, ebx, ecx, edx);
 		*eax = e->eax;
 		*ebx = e->ebx;
 		*ecx = e->ecx;
 		*edx = e->edx;
+		call_trace_put(ct, false, eax, ebx, ecx, edx);
 
 		pr_debug("vz_cpuid out : op 0x%08x: eax 0x%08x ebx 0x%08x ecx 0x%08x edx 0x%08x\n",
 			 op, *eax, *ebx, *ecx, *edx);
 	} else
-		cpuid_ops_native.cpuid(op, eax, ebx, ecx, edx);
+		cpuid_ops_native.cpuid(op, eax, ebx, ecx, edx, ct);
 }
 
 static void vz_cpuid_count_logged(uint32_t op, uint32_t count,
 				  uint32_t *eax, uint32_t *ebx,
-				  uint32_t *ecx, uint32_t *edx)
+				  uint32_t *ecx, uint32_t *edx,
+				  x86_cpuid_call_trace_t *ct)
 {
 	cpuid_override_entry_t *e = override_lookup(op, 1, count);
 	if (e) {
+		call_trace_put(ct, true, eax, ebx, ecx, edx);
 		*eax = e->eax;
 		*ebx = e->ebx;
 		*ecx = e->ecx;
 		*edx = e->edx;
+		call_trace_put(ct, false, eax, ebx, ecx, edx);
 
 		pr_debug("vz_cpuid out : op 0x%08x count 0x%08x: eax 0x%08x ebx 0x%08x ecx 0x%08x edx 0x%08x\n",
 			 op, count, *eax, *ebx, *ecx, *edx);
 	 } else
-		 cpuid_ops_native.cpuid_count(op, count, eax, ebx, ecx, edx);
+		 cpuid_ops_native.cpuid_count(op, count, eax, ebx, ecx, edx, ct);
 }
 
-static uint32_t vz_cpuid_eax(uint32_t op)
+static uint32_t vz_cpuid_eax(uint32_t op, x86_cpuid_call_trace_t *ct)
 {
 	uint32_t eax, ebx = 0, ecx, edx = 0;
-	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx);
+	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);
 	return eax;
 }
 
-static uint32_t vz_cpuid_ebx(uint32_t op)
+static uint32_t vz_cpuid_ebx(uint32_t op, x86_cpuid_call_trace_t *ct)
 {
 	uint32_t eax, ebx = 0, ecx, edx = 0;
-	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx);
+	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);
 	return ebx;
 }
 
-static uint32_t vz_cpuid_ecx(uint32_t op)
+static uint32_t vz_cpuid_ecx(uint32_t op, x86_cpuid_call_trace_t *ct)
 {
 	uint32_t eax, ebx = 0, ecx, edx = 0;
-	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx);
+	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);
 	return ecx;
 }
 
-static uint32_t vz_cpuid_edx(uint32_t op)
+static uint32_t vz_cpuid_edx(uint32_t op, x86_cpuid_call_trace_t *ct)
 {
 	uint32_t eax, ebx = 0, ecx, edx = 0;
-	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx);
+	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);
 	return edx;
 }
 

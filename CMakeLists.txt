@@ -36,6 +36,7 @@ set(HEADERS
 	"src/include/x86-cpuid.h"
 	"src/include/err.h"
 	"src/include/log.h"
+	"src/include/bug.h"
 	"src/include/list.h"
 	"src/include/cpuidctl.h"
 	"src/include/xmalloc.h")

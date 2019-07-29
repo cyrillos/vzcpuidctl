@@ -66,6 +66,7 @@ void show_fpu_info(struct cpuinfo_x86 *c)
 
 int fetch_fpuid(struct cpuinfo_x86 *c)
 {
+	x86_cpuid_call_trace_t *ct = &c->cpuid_call_trace;
 	const cpuid_ops_t *cpuid_ops = cpuid_get_ops();
 	unsigned int last_good_offset;
 	uint32_t eax, ebx, ecx, edx;
@@ -89,7 +90,7 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 	}
 
 	__zap_regs();
-	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx);
+	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx, ct);
 	c->xfeatures_mask = eax + ((uint64_t)edx << 32);
 
 	if ((c->xfeatures_mask & XFEATURE_MASK_FPSSE) != XFEATURE_MASK_FPSSE) {
@@ -118,12 +119,12 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 	 * xsaves is mostly for debug purpose.
 	 */
 	__zap_regs();
-	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx);
+	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx, ct);
 	c->xsave_size = ebx;
 	c->xsave_size_max = ecx;
 
 	__zap_regs();
-	cpuid_ops->cpuid_count(XSTATE_CPUID, 1, &eax, &ebx, &ecx, &edx);
+	cpuid_ops->cpuid_count(XSTATE_CPUID, 1, &eax, &ebx, &ecx, &edx, ct);
 	c->xsaves_size = ebx;
 
 	if (c->xsave_size_max > sizeof(struct xsave_struct))
@@ -161,7 +162,7 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 		 * state component, ECX[0] returns 1.
 		 */
 		__zap_regs();
-		cpuid_ops->cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx);
+		cpuid_ops->cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx, ct);
 		if (!(ecx & 1))
 			c->xstate_offsets[i] = ebx;
 
@@ -214,7 +215,7 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 				 * of the extended region of an XSAVE area is used:
 				 */
 				__zap_regs();
-				cpuid_ops->cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx);
+				cpuid_ops->cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx, ct);
 				if (ecx & 2)
 					c->xstate_comp_offsets[i] = ALIGN(c->xstate_comp_offsets[i], 64);
 			}

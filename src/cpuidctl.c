@@ -17,12 +17,15 @@
 
 int cpuidctl_xsave_encode(opts_t *opts)
 {
-	cpuid_rec_t rec = { };
+	cpuid_rec_t rec = {
+		.type		= CPUID_TYPE_FULL,
+		.fmt_version	= CPUID_FMT_VERSION,
+	};
+
 	char *encoded = NULL;
 	ssize_t ret = -1;
 	int out_fd = -1;
 
-	rec.type = CPUID_FULL;
 	if (fetch_cpuid(&rec.c))
 		return -1;
 
@@ -364,8 +367,16 @@ int cpuidctl_xsave_generate(opts_t *opts)
 			goto out;
 		}
 
-		if (entry->rec.type != CPUID_FULL) {
-			pr_err("Corrupted data in record\n");
+		if (entry->rec.type != CPUID_TYPE_FULL) {
+			pr_err("Corrupted record type: got %#x but %#x expected\n",
+			       entry->rec.type, CPUID_TYPE_FULL);
+			xfree(entry);
+			goto out;
+		}
+
+		if (entry->rec.fmt_version != CPUID_FMT_VERSION) {
+			pr_err("Corrupted record version: got %#x but %#x expected\n",
+			       entry->rec.fmt_version, CPUID_FMT_VERSION);
 			xfree(entry);
 			goto out;
 		}

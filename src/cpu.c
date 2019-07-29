@@ -39,6 +39,7 @@ int test_fpu_cap(cpuinfo_x86_t *c, unsigned int feature)
 
 int fetch_cpuid(cpuinfo_x86_t *c)
 {
+	x86_cpuid_call_trace_t *ct = &c->cpuid_call_trace;
 	const cpuid_ops_t *cpuid_ops = cpuid_get_ops();
 	uint32_t eax, ebx, ecx, edx;
 
@@ -56,7 +57,7 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 			 (unsigned int *)&c->cpuid_level,
 			 (unsigned int *)&c->x86_vendor_id[0],
 			 (unsigned int *)&c->x86_vendor_id[8],
-			 (unsigned int *)&c->x86_vendor_id[4]);
+			 (unsigned int *)&c->x86_vendor_id[4], ct);
 
 	if (!strcmp((char *)c->x86_vendor_id, "GenuineIntel")) {
 		c->x86_vendor = X86_VENDOR_INTEL;
@@ -73,7 +74,7 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 	/* Intel-defined flags: level 0x00000001 */
 	if (c->cpuid_level >= 0x00000001) {
 		__zap_regs();
-		cpuid_ops->cpuid(0x00000001, &eax, &ebx, &ecx, &edx);
+		cpuid_ops->cpuid(0x00000001, &eax, &ebx, &ecx, &edx, ct);
 		c->x86_family = (eax >> 8) & 0xf;
 		c->x86_model = (eax >> 4) & 0xf;
 		c->x86_mask = eax & 0xf;
@@ -89,12 +90,12 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	/* Thermal and Power Management Leaf: level 0x00000006 (eax) */
 	if (c->cpuid_level >= 0x00000006)
-		c->x86_capability[CPUID_6_EAX] = cpuid_ops->cpuid_eax(0x00000006);
+		c->x86_capability[CPUID_6_EAX] = cpuid_ops->cpuid_eax(0x00000006, ct);
 
 	/* Additional Intel-defined flags: level 0x00000007 */
 	if (c->cpuid_level >= 0x00000007) {
 		__zap_regs();
-		cpuid_ops->cpuid_count(0x00000007, 0, &eax, &ebx, &ecx, &edx);
+		cpuid_ops->cpuid_count(0x00000007, 0, &eax, &ebx, &ecx, &edx, ct);
 		c->x86_capability[CPUID_7_0_EBX] = ebx;
 		c->x86_capability[CPUID_7_0_ECX] = ecx;
 		c->x86_capability[CPUID_7_0_EDX] = edx;
@@ -103,7 +104,7 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 	/* Extended state features: level 0x0000000d */
 	if (c->cpuid_level >= 0x0000000d) {
 		__zap_regs();
-		cpuid_ops->cpuid_count(0x0000000d, 1, &eax, &ebx, &ecx, &edx);
+		cpuid_ops->cpuid_count(0x0000000d, 1, &eax, &ebx, &ecx, &edx, ct);
 		c->x86_capability[CPUID_D_1_EAX] = eax;
 	}
 
@@ -111,25 +112,25 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 	if (c->cpuid_level >= 0x0000000F) {
 		__zap_regs();
 		/* QoS sub-leaf, EAX=0Fh, ECX=0 */
-		cpuid_ops->cpuid_count(0x0000000F, 0, &eax, &ebx, &ecx, &edx);
+		cpuid_ops->cpuid_count(0x0000000F, 0, &eax, &ebx, &ecx, &edx, ct);
 		c->x86_capability[CPUID_F_0_EDX] = edx;
 
 		if (test_cpu_cap(c, X86_FEATURE_CQM_LLC)) {
 			__zap_regs();
 			/* QoS sub-leaf, EAX=0Fh, ECX=1 */
-			cpuid_ops->cpuid_count(0x0000000F, 1, &eax, &ebx, &ecx, &edx);
+			cpuid_ops->cpuid_count(0x0000000F, 1, &eax, &ebx, &ecx, &edx, ct);
 			c->x86_capability[CPUID_F_1_EDX] = edx;
 		}
 	}
 
 	/* AMD-defined flags: level 0x80000001 */
-	eax = cpuid_ops->cpuid_eax(0x80000000);
+	eax = cpuid_ops->cpuid_eax(0x80000000, ct);
 	c->extended_cpuid_level = eax;
 
 	if ((eax & 0xffff0000) == 0x80000000) {
 		if (eax >= 0x80000001) {
 			__zap_regs();
-			cpuid_ops->cpuid(0x80000001, &eax, &ebx, &ecx, &edx);
+			cpuid_ops->cpuid(0x80000001, &eax, &ebx, &ecx, &edx, ct);
 
 			c->x86_capability[CPUID_8000_0001_ECX] = ecx;
 			c->x86_capability[CPUID_8000_0001_EDX] = edx;
@@ -149,9 +150,9 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 		unsigned int *v;
 		char *p, *q;
 		v = (unsigned int *)c->x86_model_id;
-		cpuid_ops->cpuid(0x80000002, &v[0], &v[1], &v[2], &v[3]);
-		cpuid_ops->cpuid(0x80000003, &v[4], &v[5], &v[6], &v[7]);
-		cpuid_ops->cpuid(0x80000004, &v[8], &v[9], &v[10], &v[11]);
+		cpuid_ops->cpuid(0x80000002, &v[0], &v[1], &v[2], &v[3], ct);
+		cpuid_ops->cpuid(0x80000003, &v[4], &v[5], &v[6], &v[7], ct);
+		cpuid_ops->cpuid(0x80000004, &v[8], &v[9], &v[10], &v[11], ct);
 		c->x86_model_id[48] = 0;
 
 		/*
@@ -171,17 +172,17 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	if (c->extended_cpuid_level >= 0x80000007) {
 		__zap_regs();
-		cpuid_ops->cpuid(0x80000007, &eax, &ebx, &ecx, &edx);
+		cpuid_ops->cpuid(0x80000007, &eax, &ebx, &ecx, &edx, ct);
 
 		c->x86_capability[CPUID_8000_0007_EBX] = ebx;
 		c->x86_power = edx;
 	}
 
 	if (c->extended_cpuid_level >= 0x8000000a)
-		c->x86_capability[CPUID_8000_000A_EDX] = cpuid_ops->cpuid_edx(0x8000000a);
+		c->x86_capability[CPUID_8000_000A_EDX] = cpuid_ops->cpuid_edx(0x8000000a, ct);
 
 	if (c->extended_cpuid_level >= 0x80000008)
-		c->x86_capability[CPUID_8000_0008_EBX] = cpuid_ops->cpuid_ebx(0x80000008);
+		c->x86_capability[CPUID_8000_0008_EBX] = cpuid_ops->cpuid_ebx(0x80000008, ct);
 
 	/* On x86-64 CPUID is always present */
 	set_cpu_cap(c, X86_FEATURE_CPUID);
@@ -230,7 +231,7 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 			uint32_t level;
 
 			/* On C+ stepping K8 rep microcode works well for copy/memset */
-			level = cpuid_ops->cpuid_eax(1);
+			level = cpuid_ops->cpuid_eax(1, ct);
 			if ((level >= 0x0f48 && level < 0x0f50) || level >= 0x0f58)
 				set_cpu_cap(c, X86_FEATURE_REP_GOOD);
 		}

@@ -338,4 +338,13 @@ typedef struct x86_cpuid_args {
 	uint32_t	edx;
 } x86_cpuid_args_t;
 
+#define X86_MAX_CALLS	64
+
+typedef struct x86_cpuid_call_trace {
+	uint32_t		nr_in;
+	uint32_t		nr_out;
+	x86_cpuid_args_t	in[X86_MAX_CALLS];
+	x86_cpuid_args_t	out[X86_MAX_CALLS];
+} x86_cpuid_call_trace_t;
+
 #endif /* VZCPUIDCTL_X86CPUID_H__ */

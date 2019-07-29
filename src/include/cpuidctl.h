@@ -29,18 +29,19 @@ typedef struct {
 extern opts_t opts;
 
 enum {
-	CPUID_NONE		= 0,
-	CPUID_FULL		= 1,
-	CPUID_XSAVE		= 2,
+	CPUID_TYPE_NONE		= 0,
+	CPUID_TYPE_FULL		= 1,
+	CPUID_TYPE_XSAVE	= 2,
 
-	CPUID_MAX,
+	CPUID_TYPE_MAX,
 };
+
+#define	CPUID_FMT_VERSION	1
 
 typedef struct {
 	uint32_t		type;
-	union {
-		cpuinfo_x86_t	c;
-	};
+	uint32_t		fmt_version;
+	cpuinfo_x86_t		c;
 } cpuid_rec_t;
 
 typedef struct {
