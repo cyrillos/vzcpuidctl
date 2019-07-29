@@ -7,6 +7,7 @@
 #include "bitops.h"
 #include "cpu.h"
 #include "log.h"
+#include "err.h"
 
 #undef	LOG_PREFIX
 #define LOG_PREFIX "cpu: "

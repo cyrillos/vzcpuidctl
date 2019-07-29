@@ -250,6 +250,8 @@ struct xsave_struct {
 
 struct cpuinfo_x86;
 
+extern int validate_fpu_caps(struct cpuinfo_x86 *c);
+extern int validate_fpu(struct cpuinfo_x86 *c);
 extern void show_fpu_info(struct cpuinfo_x86 *c);
 extern int fetch_fpuid(struct cpuinfo_x86 *c);
 

@@ -121,11 +121,6 @@ static int generate_cpuid_override(opts_t *opts, cpuid_rec_entry_t *entry)
 	int took;
 	size_t i;
 
-	struct override_list_entry {
-		struct list_head	list;
-		cpuid_override_entry_t	entry;
-	};
-
 	struct override_list_entry *item, *tmp;
 	cpuid_override_entry_t *e;
 
@@ -133,40 +128,6 @@ static int generate_cpuid_override(opts_t *opts, cpuid_rec_entry_t *entry)
 
 	if (cpuid_override_entries) {
 		pr_err("override already read!\n");
-		return -1;
-	}
-
-	if (!test_cpu_cap(c, X86_FEATURE_FPU)) {
-		pr_err("fpu: No FPU detected\n");
-		return -1;
-	}
-
-	if (!test_cpu_cap(c, X86_FEATURE_XSAVE)) {
-		pr_err("fpu: XSAVE is not supported\n");
-		return -1;
-	}
-
-	/*
-	 * We've a bug in CRIU, XFEATURE_MASK_SUPERVISOR has been
-	 * using XFEATURE_HDC instead of XFEATURE_MASK_HDC, in
-	 * result bits XFEATURE_MASK_SSE and XFEATURE_MASK_BNDREGS
-	 * got occasionally cleared.
-	 */
-
-	if (!(c->xfeatures_mask & XFEATURE_MASK_SSE)) {
-		pr_debug("fpu: Fix sse missing bit bug\n");
-		c->xfeatures_mask |= XFEATURE_MASK_SSE;
-	}
-
-	if ((c->xfeatures_mask & XFEATURE_MASK_FPSSE) != XFEATURE_MASK_FPSSE) {
-		/*
-		 * This indicates that something really unexpected happened
-		 * with the enumeration.
-		 */
-		pr_err("fpu: FP/SSE not present amongst the CPU's xstate features: 0x%llx (0x%llx 0x%llx)\n",
-		       (unsigned long long)c->xfeatures_mask,
-		       (unsigned long long)(c->xfeatures_mask & XFEATURE_MASK_FPSSE),
-		       (unsigned long long)XFEATURE_MASK_FPSSE);
 		return -1;
 	}
 
@@ -269,6 +230,114 @@ out:
 #undef __alloc_entry
 }
 
+static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
+{
+	cpuid_rec_entry_t *entry = NULL, *tmp;
+	struct cpuinfo_x86 rt = { };
+	size_t min_size = SIZE_MAX;
+	cpuinfo_x86_t *template;
+
+	char *buf = NULL, *pos, *end;
+	size_t buf_size = 0, buf_len;
+	ssize_t len;
+	int took;
+	size_t i;
+
+	LIST_HEAD(override_entries_list);
+	override_list_entry_t *item, *itmp;
+	cpuid_override_entry_t *e;
+
+	int ret = -1;
+
+#define __alloc_entry(__item, __e)			\
+	do {						\
+		__item = xzalloc(sizeof(*__item));	\
+		if (!__item)				\
+			goto out;			\
+		__e = &__item->entry;			\
+	} while (0)
+
+	pr_info("List of collected fpus\n");
+	pr_info("---\n");
+
+	list_for_each_entry(tmp, records_head, list) {
+		show_fpu_info(&tmp->rec.c);
+		pr_info("---\n");
+
+		if (validate_fpu(&tmp->rec.c))
+			return -EINVAL;
+
+		/*
+		 * Select the less powerfull.
+		 */
+		if (tmp->rec.c.xsave_size < min_size) {
+			min_size = tmp->rec.c.xsave_size;
+			entry = tmp;
+		}
+	}
+
+	if (!entry) {
+		pr_err("Cant find any fpu entry to process\n");
+		return -ENOENT;
+	}
+
+	template = &entry->rec.c;
+	pr_info("Selected fpu entry\n");
+	pr_info("---\n");
+	show_fpu_info(template);
+	pr_info("---\n");
+
+	pr_info("Fetching runtime cpuinfo\n");
+	if (fetch_cpuid(&rt))
+		return -1;
+
+	pr_info("Runtime fpu\n");
+	pr_info("---\n");
+	show_fpu_info(&rt);
+	pr_info("---\n");
+
+	/* I'm too lazy to make it extendable :-) */
+	buf_size = 1 << 20;
+	buf = xmalloc(buf_size);
+	if (!buf)
+		goto out;
+	end = buf + buf_size;
+	pos = buf;
+
+	/*
+	 * First generate entries for all but XSTATE_CPUID
+	 * if they were in systemwide cpuid_override_entries.
+	 */
+	for (i = 0; i < nr_cpuid_override_entries; i++) {
+		e = &cpuid_override_entries[i];
+
+		if (e->op == XSTATE_CPUID)
+			continue;
+
+		took = generate_override_entry(pos, end - pos, e);
+		pos += took;
+		if (pos > end || (end - pos) < 128) {
+			pr_err("Too many entries in the override list\n");
+			goto out;
+		}
+	}
+
+	/*
+	 * Now generate entries for XSTATE_CPUID leaf, note that
+	 * we have to modify only those fields which are to be
+	 * updated and anythingelse should left from rt data
+	 * untouched.
+	 */
+
+out:
+	list_for_each_entry_safe(item, itmp, &override_entries_list, list)
+		xfree(item);
+	xfree(buf);
+	return ret;
+
+#undef __alloc_entry
+}
+
 static int read_data_files(opts_t *opts)
 {
 	size_t encoded_size = b64_encoded_size(sizeof(cpuid_rec_t));
@@ -335,9 +404,7 @@ int cpuidctl_xsave_generate(opts_t *opts)
 {
 	size_t encoded_size = b64_encoded_size(sizeof(cpuid_rec_t));
 	cpuid_rec_entry_t *entry, *tmp;
-	size_t min_size = SIZE_MAX;
 	LIST_HEAD(records_head);
-	cpuinfo_x86_t *c;
 	str_entry_t *sl;
 	int ret = -1;
 
@@ -384,30 +451,17 @@ int cpuidctl_xsave_generate(opts_t *opts)
 		list_add(&entry->list, &records_head);
 	}
 
-	entry = NULL;
-	pr_info("Listing fpus\n");
-	pr_info("---\n");
-	list_for_each_entry(tmp, &records_head, list) {
-		show_fpu_info(&tmp->rec.c);
-		pr_info("---\n");
-		if (tmp->rec.c.xsave_size < min_size) {
-			min_size = tmp->rec.c.xsave_size;
-			entry = tmp;
-		}
-	}
-
-	if (!entry) {
-		pr_err("Cant find entry to process\n");
+	switch (opts->sync_mode) {
+	case SYNC_MODE_FPU:
+		ret = generate_fpu_override(opts, &records_head);
+		break;
+	default:
+		pr_err("Unsupported cpu sync mode: %d\n",
+		       opts->sync_mode);
 		goto out;
 	}
 
-	c = &entry->rec.c;
-	pr_info("Selected fpu\n");
-	pr_info("---\n");
-	show_fpu_info(c);
-	pr_info("---\n");
-
-	ret = generate_cpuid_override(opts, entry);
+	//ret = generate_cpuid_override(opts, entry);
 out:
 	list_for_each_entry_safe(entry, tmp, &records_head, list)
 		xfree(entry);

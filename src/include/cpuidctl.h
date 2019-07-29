@@ -11,6 +11,11 @@ typedef struct {
 	char			*str;
 } str_entry_t;
 
+typedef struct override_list_entry {
+	struct list_head	list;
+	cpuid_override_entry_t	entry;
+} override_list_entry_t;
+
 enum {
 	SYNC_MODE_NONE		= 0,
 	SYNC_MODE_FPU		= 1,

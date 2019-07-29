@@ -56,4 +56,8 @@ extern int cpuid_override_init(char *override_path);
 extern void cpuid_register(const cpuid_ops_t *ops);
 extern const cpuid_ops_t *cpuid_get_ops(void);
 
+extern int call_trace_find_idx_in(x86_cpuid_call_trace_t *ct,
+				  uint32_t eax, uint32_t ebx,
+				  uint32_t ecx, uint32_t edx);
+
 #endif /* VZCPUIDCTL_CPUID_H__ */

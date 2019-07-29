@@ -64,6 +64,52 @@ void show_fpu_info(struct cpuinfo_x86 *c)
 	}
 }
 
+int validate_fpu_caps(struct cpuinfo_x86 *c)
+{
+	if (!test_cpu_cap(c, X86_FEATURE_FPU)) {
+		pr_err("No FPU detected\n");
+		return -EINVAL;
+	}
+
+	if (!test_cpu_cap(c, X86_FEATURE_XSAVE)) {
+		pr_err("XSAVE is not supported\n");
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int validate_fpu(struct cpuinfo_x86 *c)
+{
+	if (validate_fpu_caps(c))
+		return -EINVAL;
+
+	/*
+	 * We've a bug in CRIU, XFEATURE_MASK_SUPERVISOR has been
+	 * using XFEATURE_HDC instead of XFEATURE_MASK_HDC, in
+	 * result bits XFEATURE_MASK_SSE and XFEATURE_MASK_BNDREGS
+	 * got occasionally cleared.
+	 */
+	if (!(c->xfeatures_mask & XFEATURE_MASK_SSE)) {
+		pr_debug("Fix sse missing bit bug\n");
+		c->xfeatures_mask |= XFEATURE_MASK_SSE;
+	}
+
+	if ((c->xfeatures_mask & XFEATURE_MASK_FPSSE) != XFEATURE_MASK_FPSSE) {
+		/*
+		 * This indicates that something really unexpected happened
+		 * with the enumeration.
+		 */
+		pr_err("FP/SSE not present amongst the CPU's xstate features: 0x%llx (0x%llx 0x%llx)\n",
+		       (unsigned long long)c->xfeatures_mask,
+		       (unsigned long long)(c->xfeatures_mask & XFEATURE_MASK_FPSSE),
+		       (unsigned long long)XFEATURE_MASK_FPSSE);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
 int fetch_fpuid(struct cpuinfo_x86 *c)
 {
 	x86_cpuid_call_trace_t *ct = &c->cpuid_call_trace;
@@ -77,17 +123,8 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 	BUILD_BUG_ON(ARRAY_SIZE(xsave_cpuid_features) !=
 		     ARRAY_SIZE(xfeature_names));
 
-	if (!test_cpu_cap(c, X86_FEATURE_FPU)) {
-		pr_err("No FPU detected\n");
+	if (validate_fpu_caps(c))
 		return -1;
-	}
-
-	if (!test_cpu_cap(c, X86_FEATURE_XSAVE)) {
-		pr_info("x87 FPU will use %s\n",
-			test_cpu_cap(c, X86_FEATURE_FXSR) ?
-			"FXSAVE" : "FSAVE");
-		return 0;
-	}
 
 	__zap_regs();
 	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx, ct);

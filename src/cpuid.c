@@ -19,12 +19,14 @@ static void call_trace_put(x86_cpuid_call_trace_t *ct, bool in,
 			   uint32_t *eax, uint32_t *ebx,
 			   uint32_t *ecx, uint32_t *edx)
 {
+	BUILD_BUG_ON(ARRAY_SIZE(ct->in) != ARRAY_SIZE(ct->out));
+
 	if (ct) {
 		x86_cpuid_args_t *args = in ?
 			&ct->in[ct->nr_in] :
 			&ct->out[ct->nr_out];
 
-		BUG_ON(ct->nr_in >= (in ? ARRAY_SIZE(ct->in) : ARRAY_SIZE(ct->out)));
+		BUG_ON(ct->nr_in >= ARRAY_SIZE(ct->in));
 
 		args->eax = *eax;
 		args->ebx = *ebx;
@@ -36,6 +38,23 @@ static void call_trace_put(x86_cpuid_call_trace_t *ct, bool in,
 		else
 			ct->nr_out++;
 	}
+}
+
+int call_trace_find_idx_in(x86_cpuid_call_trace_t *ct,
+			   uint32_t eax, uint32_t ebx,
+			   uint32_t ecx, uint32_t edx)
+{
+	size_t i;
+
+	for (i = 0; i < ct->nr_in; i++) {
+		if (ct->in[i].eax == eax &&
+		    ct->in[i].ebx == ebx &&
+		    ct->in[i].ecx == ecx &&
+		    ct->in[i].edx == edx)
+			return i;
+	}
+
+	return -ENOENT;
 }
 
 static void x86_native_cpuid_logged(uint32_t *eax, uint32_t *ebx,
@@ -104,7 +123,7 @@ const cpuid_ops_t cpuid_ops_native = {
 	.cpuid		= x86_cpuid,
 	.cpuid_count	= x86_cpuid_count,
 	.cpuid_eax	= x86_cpuid_eax,
-	.cpuid_eax	= x86_cpuid_ebx,
+	.cpuid_ebx	= x86_cpuid_ebx,
 	.cpuid_ecx	= x86_cpuid_ecx,
 	.cpuid_edx	= x86_cpuid_edx,
 };
