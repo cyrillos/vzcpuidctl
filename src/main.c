@@ -18,6 +18,7 @@ static void opts_init(opts_t *opts)
 	INIT_LIST_HEAD(&opts->list_data);
 	INIT_LIST_HEAD(&opts->list_data_path);
 
+	opts->sync_mode = SYNC_MODE_FPU;
 	opts->log_level = DEFAULT_LOGLEVEL;
 }
 
@@ -44,6 +45,7 @@ int main(int argc, char *argv[])
 		{"data",		required_argument,	0,	'd' },
 		{"data-file",		required_argument,	0,	'f' },
 		{"output",		required_argument,	0,	'o' },
+		{"sync-mode",		required_argument,	0,	'm' },
 		{"use-cpuid-override",	no_argument,		0,	1000 },
 		{"cpuid-override-path",	required_argument,	0,	1010 },
 		{"write-cpuid-override",no_argument,		0,	1020 },
@@ -64,7 +66,7 @@ int main(int argc, char *argv[])
 		int opt_index = 0;
 		str_entry_t *sl;
 
-		int c = getopt_long(argc, argv, "hv:d:o:f:", long_opts, &opt_index);
+		int c = getopt_long(argc, argv, "hv:d:o:f:m:", long_opts, &opt_index);
 		if (c == -1)
 			break;
 
@@ -81,6 +83,14 @@ int main(int argc, char *argv[])
 			break;
 		case 'o':
 			opts.out_fd_path = optarg;
+			break;
+		case 'm':
+			if (!strcmp(optarg, "fpu")) {
+				opts.sync_mode = SYNC_MODE_FPU;
+			} else {
+				pr_err("Only 'fpu' mode is supported\n");
+				exit(1);
+			}
 			break;
 		case 'f':
 		case 'd':
@@ -185,6 +195,9 @@ print_help:
 "       Write generated entries into PATH\n"
 "  --write-cpuid-override\n"
 "       Write generated entries into system cpuid_override\n"
+"  -m,--sync-mode MODE\n"
+"       When generating entries consider MODE related entires only.\n"
+"       Supported modes are: fpu. Default: fpu\n"
 	);
 
 	return 0;

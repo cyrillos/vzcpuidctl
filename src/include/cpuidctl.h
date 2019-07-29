@@ -11,11 +11,21 @@ typedef struct {
 	char			*str;
 } str_entry_t;
 
+enum {
+	SYNC_MODE_NONE		= 0,
+	SYNC_MODE_FPU		= 1,
+	SYNC_MODE_INS		= 2,
+
+	SYNC_MODE_MAX,
+};
+
 typedef struct {
 	char			*out_fd_path;
 
 	int			log_level;
 	char			*log_path;
+
+	unsigned int		sync_mode;
 
 	char			*cpuid_override_path;
 	bool			parse_cpuid_override;
