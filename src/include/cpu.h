@@ -40,12 +40,8 @@ typedef struct cpuinfo_x86 {
 
 	/* Extended data for cpuid carries */
 	uint32_t		nr_cpuid_recs;
-	cpuid_rec_x86_t		cpuid_recs[0];
+	cpuid_rec_x86_t		cpuid_recs[64];
 } cpuinfo_x86_t;
-
-#define CPUID_MAX_RECS		256
-#define CPUID_RECS_SIZE		(CPUID_MAX_RECS * sizeof(cpuid_rec_x86_t))
-#define CPUINFO_X86_MAX_SIZE	(sizeof(cpuinfo_x86_t) + CPUID_RECS_SIZE)
 
 extern int test_fpu_cap(cpuinfo_x86_t *c, unsigned int feature);
 extern int test_cpu_cap(cpuinfo_x86_t *c, unsigned int feature);
