@@ -22,6 +22,7 @@ set(SOURCES
 	"src/fpu.c"
 	"src/cpuid.c"
 	"src/log.c"
+	"src/json.c"
 	"src/base64.c"
 	"src/cpuidctl.c"
 	"src/main.c")
@@ -36,9 +37,11 @@ set(HEADERS
 	"src/include/x86-cpuid.h"
 	"src/include/err.h"
 	"src/include/log.h"
+	"src/include/json.h"
 	"src/include/bug.h"
 	"src/include/list.h"
 	"src/include/cpuidctl.h"
 	"src/include/xmalloc.h")
 
 add_executable(vzcpuidctl ${SOURCES} ${HEADERS})
+target_link_libraries(vzcpuidctl jansson)

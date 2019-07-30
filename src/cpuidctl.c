@@ -10,6 +10,7 @@
 #include "log.h"
 #include "xmalloc.h"
 #include "base64.h"
+#include "json.h"
 #include "cpuidctl.h"
 
 #undef	LOG_PREFIX
@@ -26,17 +27,20 @@ int cpuidctl_xsave_encode(opts_t *opts)
 	ssize_t ret = -1;
 	int out_fd = -1;
 
+	json_t *root;
+
 	if (fetch_cpuid(&rec.c))
 		return -1;
 
-	encoded = b64_encode((void *)&rec, sizeof(rec));
+	root = json_encode_cpuid_rec(&rec);
+	encoded = json_dumps(root, JSON_COMPACT);
 	if (encoded == NULL) {
 		pr_err("Can't encode cpuinfo\n");
 		return -1;
 	}
 
 	if (!opts->out_fd_path) {
-		pr_info("encoded cpuinfo data is on the next line:\n%s\n", encoded);
+		pr_info("encoded cpuinfo data in json format:\n%s\n", encoded);
 		ret = 0;
 	} else {
 		out_fd = open(opts->out_fd_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -59,6 +63,8 @@ int cpuidctl_xsave_encode(opts_t *opts)
 out:
 	if (opts->out_fd_path && out_fd >= 0)
 		close(out_fd);
+
+	json_decref(root);
 	xfree(encoded);
 	return ret;
 }
@@ -340,7 +346,6 @@ out:
 
 static int read_data_files(opts_t *opts)
 {
-	size_t encoded_size = b64_encoded_size(sizeof(cpuid_rec_t));
 	str_entry_t *sl, *new = NULL;
 	struct stat st;
 	int fd = -1;
@@ -358,12 +363,6 @@ static int read_data_files(opts_t *opts)
 
 		if (fstat(fd, &st)) {
 			pr_perror("Stat failed on %s", sl->str);
-			goto cant_read;
-		}
-
-		if (st.st_size < encoded_size) {
-			pr_err("File %s is too small, at least %zd bytes needed\n",
-			       sl->str, encoded_size);
 			goto cant_read;
 		}
 
@@ -418,17 +417,12 @@ int cpuidctl_xsave_generate(opts_t *opts)
 
 	list_for_each_entry(sl, &opts->list_data, list) {
 		size_t size = strlen(sl->str);
-		if (size != encoded_size) {
-			pr_err("Data encode corruption detected: got %zu but %zu expected\n",
-			       size, encoded_size);
-			goto out;
-		}
 
-		entry = xmalloc(size + sizeof(*entry));
+		entry = xzalloc(size + sizeof(*entry));
 		if (!entry)
 			goto out;
 
-		if (b64_decode(sl->str, (void *)&entry->rec, size) < 0) {
+		if (json_decode_cpuid_rec(&entry->rec, sl->str, size + 1)) {
 			pr_err("Can't decode data\n");
 			xfree(entry);
 			goto out;
