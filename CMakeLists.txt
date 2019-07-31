@@ -17,7 +17,6 @@ add_custom_target(tags
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 set(SOURCES
-	"src/mpack/mpack.c"
 	"src/cpu.c"
 	"src/fpu.c"
 	"src/cpuid.c"
@@ -27,7 +26,6 @@ set(SOURCES
 	"src/main.c")
 
 set(HEADERS
-	"src/mpack/mpack.h"
 	"src/include/bitops.h"
 	"src/include/compiler.h"
 	"src/include/cpu.h"
