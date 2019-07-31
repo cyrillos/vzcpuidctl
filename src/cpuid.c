@@ -90,33 +90,20 @@ static void x86_cpuid_count(uint32_t op, uint32_t count,
 	x86_native_cpuid_logged(eax, ebx, ecx, edx, ct);
 }
 
-static uint32_t x86_cpuid_eax(uint32_t op, x86_cpuid_call_trace_t *ct)
-{
-	uint32_t eax, ebx = 0, ecx, edx = 0;
-	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);
-	return eax;
+#define generate_x86_cpuid_X(__name)						\
+static uint32_t x86_cpuid_ ##__name(uint32_t op, x86_cpuid_call_trace_t *ct)	\
+{										\
+	uint32_t eax, ebx = 0, ecx, edx = 0;					\
+	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);				\
+	return __name;								\
 }
 
-static uint32_t x86_cpuid_ebx(uint32_t op, x86_cpuid_call_trace_t *ct)
-{
-	uint32_t eax, ebx = 0, ecx, edx = 0;
-	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);
-	return ebx;
-}
+generate_x86_cpuid_X(eax);
+generate_x86_cpuid_X(ebx);
+generate_x86_cpuid_X(ecx);
+generate_x86_cpuid_X(edx);
 
-static uint32_t x86_cpuid_ecx(uint32_t op, x86_cpuid_call_trace_t *ct)
-{
-	uint32_t eax, ebx = 0, ecx, edx = 0;
-	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);
-	return ecx;
-}
-
-static uint32_t x86_cpuid_edx(uint32_t op, x86_cpuid_call_trace_t *ct)
-{
-	uint32_t eax, ebx = 0, ecx, edx = 0;
-	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);
-	return edx;
-}
+#undef generate_x86_cpuid_X
 
 const cpuid_ops_t cpuid_ops_native = {
 	.description	= "x86 native cpuid",
@@ -249,33 +236,20 @@ static void vz_cpuid_count_logged(uint32_t op, uint32_t count,
 		 cpuid_ops_native.cpuid_count(op, count, eax, ebx, ecx, edx, ct);
 }
 
-static uint32_t vz_cpuid_eax(uint32_t op, x86_cpuid_call_trace_t *ct)
-{
-	uint32_t eax, ebx = 0, ecx, edx = 0;
-	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);
-	return eax;
+#define generate_vz_cpuid_X(__name)						\
+static uint32_t vz_cpuid_ ##__name(uint32_t op, x86_cpuid_call_trace_t *ct)	\
+{										\
+	uint32_t eax, ebx = 0, ecx, edx = 0;					\
+	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);			\
+	return __name;								\
 }
 
-static uint32_t vz_cpuid_ebx(uint32_t op, x86_cpuid_call_trace_t *ct)
-{
-	uint32_t eax, ebx = 0, ecx, edx = 0;
-	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);
-	return ebx;
-}
+generate_vz_cpuid_X(eax);
+generate_vz_cpuid_X(ebx);
+generate_vz_cpuid_X(ecx);
+generate_vz_cpuid_X(edx);
 
-static uint32_t vz_cpuid_ecx(uint32_t op, x86_cpuid_call_trace_t *ct)
-{
-	uint32_t eax, ebx = 0, ecx, edx = 0;
-	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);
-	return ecx;
-}
-
-static uint32_t vz_cpuid_edx(uint32_t op, x86_cpuid_call_trace_t *ct)
-{
-	uint32_t eax, ebx = 0, ecx, edx = 0;
-	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);
-	return edx;
-}
+#undef generate_vz_cpuid_X
 
 const cpuid_ops_t cpuid_ops_override = {
 	.description	= "vz override cpuid",
