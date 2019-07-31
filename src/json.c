@@ -155,11 +155,6 @@ static int json_decode_cpuinfo(json_t *root, cpuinfo_x86_t *c)
 	int ret = -1;
 	char *s;
 
-	memset(c->xstate_offsets, 0xff, sizeof(c->xstate_offsets));
-	memset(c->xstate_sizes, 0xff, sizeof(c->xstate_sizes));
-	memset(c->xstate_comp_offsets, 0xff, sizeof(c->xstate_comp_offsets));
-	memset(c->xstate_comp_sizes, 0xff, sizeof(c->xstate_comp_sizes));
-
 	if (json_unpack_ex(root, &jerr, 0, "{s:I s:I s:I s:I}",
 			   "x86_family", &c->x86_family,
 			   "x86_vendor", &c->x86_vendor,
