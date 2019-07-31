@@ -190,7 +190,7 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 	pr_info("---\n");
 
 	/* I'm too lazy to make it extendable :-) */
-	buf_size = 1 << 20;
+	buf_size = 4 << 20;
 	buf = xmalloc(buf_size);
 	if (!buf)
 		goto out;
@@ -214,6 +214,56 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 			goto out;
 		}
 	}
+
+	/*
+	 * Then process entries for xsave_cpuid_features, which are
+	 * bound to cpu capability. Note that we leave
+	 * X86_FEATURE_FPU, X86_FEATURE_XMM, X86_FEATURE_AVX
+	 * as is since they are bound to cpuid(0x00000001, ...)
+	 * which returns Initial APIC ID which we simply should
+	 * not modify!
+	 */
+
+	/* Thermal and Power Management Leaf: level 0x00000006 (eax) */
+	if (template->cpuid_level >= 0x00000006) {
+		j = call_trace_find_idx_in(template_ct,
+					   0x00000006, 0, 0, 0);
+		if (j < 0) {
+			pr_err("No calltrace for cpuid_level %d\n", 0x00000006);
+			goto out;
+		}
+		__alloc_entry(item, e);
+
+		e->op		= 0x00000006;
+		e->count	= 0;
+		e->has_count	= false;
+		e->eax		= template_ct->out[j].eax;
+		e->edx		= template_ct->out[j].edx;
+		e->ebx		= template_ct->out[j].ebx;
+		e->ecx		= template_ct->out[j].ecx;
+		list_add(&item->list, &override_entries_list);
+	}
+
+	/* Additional Intel-defined flags: level 0x00000007 */
+	if (template->cpuid_level >= 0x00000007) {
+		j = call_trace_find_idx_in(template_ct,
+					   0x00000007, 0, 0, 0);
+		if (j < 0) {
+			pr_err("No calltrace for cpuid_level %d\n", 0x00000007);
+			goto out;
+		}
+		__alloc_entry(item, e);
+
+		e->op		= 0x00000007;
+		e->count	= 0;
+		e->has_count	= true;
+		e->eax		= template_ct->out[j].eax;
+		e->ebx		= template->x86_capability[CPUID_7_0_EBX];
+		e->ecx		= template->x86_capability[CPUID_7_0_ECX];
+		e->edx		= template->x86_capability[CPUID_7_0_EDX];
+		list_add(&item->list, &override_entries_list);
+	}
+
 
 	/*
 	 * Now generate entries for XSTATE_CPUID leaf, note that
@@ -261,7 +311,7 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 			e->has_count	= true;
 			e->eax		= 0;
 			e->ebx		= 0;
-			e->ecx		= 0;
+			e->ecx		= 1;
 			e->edx		= 0;
 
 			list_add(&item->list, &override_entries_list);
@@ -286,7 +336,7 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 		e->edx		= 0;
 
 		e->ecx		= 0;
-		if (template->xstate_offsets[i] != 0xff)
+		if (template->xstate_offsets[i] == 0xff)
 			e->ecx	|= 1;
 		if (template->xstate_comp_offsets[i] != 0xff)
 			e->ecx	|= 2;
