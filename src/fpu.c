@@ -113,10 +113,21 @@ int validate_fpu(struct cpuinfo_x86 *c)
 void init_fpuid(struct cpuinfo_x86 *c)
 {
 	/* Must be called after init_cpuid */
-	memset(c->xstate_offsets, 0xff, sizeof(c->xstate_offsets));
-	memset(c->xstate_sizes, 0xff, sizeof(c->xstate_sizes));
-	memset(c->xstate_comp_offsets, 0xff, sizeof(c->xstate_comp_offsets));
-	memset(c->xstate_comp_sizes, 0xff, sizeof(c->xstate_comp_sizes));
+	memset(c->xstate_offsets,	0xff, sizeof(c->xstate_offsets));
+	memset(c->xstate_sizes,		0xff, sizeof(c->xstate_sizes));
+	memset(c->xstate_comp_offsets,	0xff, sizeof(c->xstate_comp_offsets));
+	memset(c->xstate_comp_sizes,	0xff, sizeof(c->xstate_comp_sizes));
+
+	/*
+	 * The FP xstates and SSE xstates are legacy states. They are always
+	 * in the fixed offsets in the xsave area in either compacted form
+	 * or standard form.
+	 */
+	c->xstate_offsets[0]	= 0;
+	c->xstate_sizes[0]	= offsetof(struct i387_fxsave_struct, xmm_space);
+	c->xstate_offsets[1]	= c->xstate_sizes[0];
+	c->xstate_sizes[1]	= FIELD_SIZEOF(struct i387_fxsave_struct, xmm_space);
+
 }
 
 int fetch_fpuid(struct cpuinfo_x86 *c)
@@ -176,16 +187,6 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 
 	/* start at the beginnning of the "extended state" */
 	last_good_offset = offsetof(struct xsave_struct, extended_state_area);
-
-	/*
-	 * The FP xstates and SSE xstates are legacy states. They are always
-	 * in the fixed offsets in the xsave area in either compacted form
-	 * or standard form.
-	 */
-	c->xstate_offsets[0]	= 0;
-	c->xstate_sizes[0]	= offsetof(struct i387_fxsave_struct, xmm_space);
-	c->xstate_offsets[1]	= c->xstate_sizes[0];
-	c->xstate_sizes[1]	= FIELD_SIZEOF(struct i387_fxsave_struct, xmm_space);
 
 	for (i = FIRST_EXTENDED_XFEATURE; i < XFEATURE_MAX; i++) {
 		if (!(c->xfeatures_mask & (1UL << i)))
