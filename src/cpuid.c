@@ -128,8 +128,8 @@ const cpuid_ops_t cpuid_ops_native = {
 	.cpuid_edx	= x86_cpuid_edx,
 };
 
-cpuid_override_entry_t *cpuid_override_entries;
-unsigned int nr_cpuid_override_entries;
+cpuid_override_entry_t *rt_cpuid_override_entries;
+unsigned int rt_nr_cpuid_override_entries;
 
 static int parse_override(char *path)
 {
@@ -168,15 +168,15 @@ static int parse_override(char *path)
 			goto out;
 		}
 
-		new_size = sizeof(e) * (nr_cpuid_override_entries + 1);
+		new_size = sizeof(e) * (rt_nr_cpuid_override_entries + 1);
 
-		if (xrealloc_safe(&cpuid_override_entries, new_size)) {
+		if (xrealloc_safe(&rt_cpuid_override_entries, new_size)) {
 			pr_err("cpuid_override: no memory for cpuid override (%d entries)\n",
-			       nr_cpuid_override_entries + 1);
+			       rt_nr_cpuid_override_entries + 1);
 			goto out;
 		}
 
-		cpuid_override_entries[nr_cpuid_override_entries++] = e;
+		rt_cpuid_override_entries[rt_nr_cpuid_override_entries++] = e;
 
 		if (e.has_count) {
 			pr_debug("cpuid_override: 0x%08x 0x%08x: 0x%08x 0x%08x 0x%08x 0x%08x\n",
@@ -198,12 +198,12 @@ override_lookup(uint32_t op, uint32_t has_count, uint32_t count)
 {
 	size_t i;
 
-	for (i = 0; i < nr_cpuid_override_entries; i++) {
-		if (cpuid_override_entries[i].op != op		||
-		    cpuid_override_entries[i].has_count != has_count	||
-		    count != cpuid_override_entries[i].count)
+	for (i = 0; i < rt_nr_cpuid_override_entries; i++) {
+		if (rt_cpuid_override_entries[i].op != op		||
+		    rt_cpuid_override_entries[i].has_count != has_count	||
+		    count != rt_cpuid_override_entries[i].count)
 			continue;
-		return &cpuid_override_entries[i];
+		return &rt_cpuid_override_entries[i];
 	}
 
 	return NULL;

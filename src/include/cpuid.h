@@ -29,8 +29,8 @@ typedef struct {
 	uint32_t	edx;
 } cpuid_override_entry_t;
 
-extern cpuid_override_entry_t *cpuid_override_entries;
-extern unsigned int nr_cpuid_override_entries;
+extern cpuid_override_entry_t *rt_cpuid_override_entries;
+extern unsigned int rt_nr_cpuid_override_entries;
 
 typedef struct {
 	const char *description;

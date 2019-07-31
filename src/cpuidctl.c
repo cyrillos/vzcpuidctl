@@ -132,7 +132,7 @@ static int generate_cpuid_override(opts_t *opts, cpuid_rec_entry_t *entry)
 
 	LIST_HEAD(override_entries_list);
 
-	if (cpuid_override_entries) {
+	if (rt_cpuid_override_entries) {
 		pr_err("override already read!\n");
 		return -1;
 	}
@@ -179,8 +179,8 @@ static int generate_cpuid_override(opts_t *opts, cpuid_rec_entry_t *entry)
 	end = buf + buf_size;
 	pos = buf;
 
-	for (i = 0; i < nr_cpuid_override_entries; i++) {
-		e = &cpuid_override_entries[i];
+	for (i = 0; i < rt_nr_cpuid_override_entries; i++) {
+		e = &rt_cpuid_override_entries[i];
 
 		/* Skip old entries */
 		if (e->op == XSTATE_CPUID)
@@ -312,10 +312,10 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 
 	/*
 	 * First generate entries for all but XSTATE_CPUID
-	 * if they were in systemwide cpuid_override_entries.
+	 * if they were in systemwide rt_cpuid_override_entries.
 	 */
-	for (i = 0; i < nr_cpuid_override_entries; i++) {
-		e = &cpuid_override_entries[i];
+	for (i = 0; i < rt_nr_cpuid_override_entries; i++) {
+		e = &rt_cpuid_override_entries[i];
 
 		if (e->op == XSTATE_CPUID)
 			continue;
