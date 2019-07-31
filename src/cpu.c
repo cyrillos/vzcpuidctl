@@ -150,6 +150,8 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 	const cpuid_ops_t *cpuid_ops = cpuid_get_ops();
 	uint32_t eax, ebx, ecx, edx;
 
+	init_cpuid(c);
+
 #define __zap_regs() eax = ebx = ecx = edx = 0
 
 	/*
