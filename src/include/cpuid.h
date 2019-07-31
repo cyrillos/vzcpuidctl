@@ -53,6 +53,7 @@ extern const cpuid_ops_t cpuid_ops_native;
 extern const cpuid_ops_t cpuid_ops_override;
 
 extern int cpuid_override_init(char *override_path);
+extern void cpuid_override_fini(void);
 extern void cpuid_register(const cpuid_ops_t *ops);
 extern const cpuid_ops_t *cpuid_get_ops(void);
 

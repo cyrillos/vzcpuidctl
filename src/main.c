@@ -158,6 +158,8 @@ int main(int argc, char *argv[])
 
 	ret = 0;
 out:
+	if (opts.parse_cpuid_override)
+		cpuid_override_fini();
 	log_close();
 	opts_fini(&opts);
 	return ret;

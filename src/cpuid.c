@@ -292,6 +292,12 @@ int cpuid_override_init(char *override_path)
 	return parse_override(override_path);
 }
 
+void cpuid_override_fini(void)
+{
+	xfree(rt_cpuid_override_entries);
+	rt_nr_cpuid_override_entries = 0;
+}
+
 void cpuid_register(const cpuid_ops_t *ops)
 {
 	pr_info("register: %s\n", ops->description);
