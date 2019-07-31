@@ -152,8 +152,6 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	init_cpuid(c);
 
-#define __zap_regs() eax = ebx = ecx = edx = 0
-
 	/*
 	 * See cpu_detect() in the kernel, also
 	 * read cpuid specs not only from general
@@ -182,7 +180,6 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	/* Intel-defined flags: level 0x00000001 */
 	if (c->cpuid_level >= 0x00000001) {
-		__zap_regs();
 		cpuid_ops->cpuid(0x00000001, &eax, &ebx, &ecx, &edx, ct);
 		c->x86_family = (eax >> 8) & 0xf;
 		c->x86_model = (eax >> 4) & 0xf;
@@ -203,7 +200,6 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	/* Additional Intel-defined flags: level 0x00000007 */
 	if (c->cpuid_level >= 0x00000007) {
-		__zap_regs();
 		cpuid_ops->cpuid_count(0x00000007, 0, &eax, &ebx, &ecx, &edx, ct);
 		c->x86_capability[CPUID_7_0_EBX] = ebx;
 		c->x86_capability[CPUID_7_0_ECX] = ecx;
@@ -212,20 +208,17 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	/* Extended state features: level 0x0000000d */
 	if (c->cpuid_level >= 0x0000000d) {
-		__zap_regs();
 		cpuid_ops->cpuid_count(0x0000000d, 1, &eax, &ebx, &ecx, &edx, ct);
 		c->x86_capability[CPUID_D_1_EAX] = eax;
 	}
 
 	/* Additional Intel-defined flags: level 0x0000000F */
 	if (c->cpuid_level >= 0x0000000F) {
-		__zap_regs();
 		/* QoS sub-leaf, EAX=0Fh, ECX=0 */
 		cpuid_ops->cpuid_count(0x0000000F, 0, &eax, &ebx, &ecx, &edx, ct);
 		c->x86_capability[CPUID_F_0_EDX] = edx;
 
 		if (test_cpu_cap(c, X86_FEATURE_CQM_LLC)) {
-			__zap_regs();
 			/* QoS sub-leaf, EAX=0Fh, ECX=1 */
 			cpuid_ops->cpuid_count(0x0000000F, 1, &eax, &ebx, &ecx, &edx, ct);
 			c->x86_capability[CPUID_F_1_EDX] = edx;
@@ -238,7 +231,6 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 
 	if ((eax & 0xffff0000) == 0x80000000) {
 		if (eax >= 0x80000001) {
-			__zap_regs();
 			cpuid_ops->cpuid(0x80000001, &eax, &ebx, &ecx, &edx, ct);
 
 			c->x86_capability[CPUID_8000_0001_ECX] = ecx;
@@ -280,7 +272,6 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 	}
 
 	if (c->extended_cpuid_level >= 0x80000007) {
-		__zap_regs();
 		cpuid_ops->cpuid(0x80000007, &eax, &ebx, &ecx, &edx, ct);
 
 		c->x86_capability[CPUID_8000_0007_EBX] = ebx;
@@ -351,5 +342,4 @@ int fetch_cpuid(cpuinfo_x86_t *c)
 		 c->x86_family, c->x86_vendor_id, c->x86_model_id);
 
 	return fetch_fpuid(c);
-#undef __zap_regs
 }

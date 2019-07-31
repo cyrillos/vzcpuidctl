@@ -78,6 +78,7 @@ static void x86_cpuid(uint32_t op,
 		      x86_cpuid_call_trace_t *ct)
 {
 	*eax = op, *ecx = 0;
+	*ebx = 0, *edx = 0; /* to eliminate side effects */
 	x86_native_cpuid_logged(eax, ebx, ecx, edx, ct);
 }
 
@@ -87,13 +88,14 @@ static void x86_cpuid_count(uint32_t op, uint32_t count,
 			    x86_cpuid_call_trace_t *ct)
 {
 	*eax = op, *ecx = count;
+	*ebx = 0, *edx = 0; /* to eliminate side effects */
 	x86_native_cpuid_logged(eax, ebx, ecx, edx, ct);
 }
 
 #define generate_x86_cpuid_X(__name)						\
 static uint32_t x86_cpuid_ ##__name(uint32_t op, x86_cpuid_call_trace_t *ct)	\
 {										\
-	uint32_t eax, ebx = 0, ecx, edx = 0;					\
+	uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;				\
 	x86_cpuid(op, &eax, &ebx, &ecx, &edx, ct);				\
 	return __name;								\
 }
@@ -239,7 +241,7 @@ static void vz_cpuid_count_logged(uint32_t op, uint32_t count,
 #define generate_vz_cpuid_X(__name)						\
 static uint32_t vz_cpuid_ ##__name(uint32_t op, x86_cpuid_call_trace_t *ct)	\
 {										\
-	uint32_t eax, ebx = 0, ecx, edx = 0;					\
+	uint32_t eax = 0, ebx = 0, ecx = 0, edx = 0;				\
 	vz_cpuid_logged(op, &eax, &ebx, &ecx, &edx, ct);			\
 	return __name;								\
 }

@@ -127,8 +127,6 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 	uint32_t eax, ebx, ecx, edx;
 	size_t i;
 
-#define __zap_regs() eax = ebx = ecx = edx = 0
-
 	BUILD_BUG_ON(ARRAY_SIZE(xsave_cpuid_features) !=
 		     ARRAY_SIZE(xfeature_names));
 
@@ -137,7 +135,6 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 
 	init_fpuid(c);
 
-	__zap_regs();
 	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx, ct);
 	c->xfeatures_mask = eax + ((uint64_t)edx << 32);
 
@@ -166,12 +163,10 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 	 * xsaves is not enabled in userspace, so
 	 * xsaves is mostly for debug purpose.
 	 */
-	__zap_regs();
 	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx, ct);
 	c->xsave_size = ebx;
 	c->xsave_size_max = ecx;
 
-	__zap_regs();
 	cpuid_ops->cpuid_count(XSTATE_CPUID, 1, &eax, &ebx, &ecx, &edx, ct);
 	c->xsaves_size = ebx;
 
@@ -204,7 +199,6 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 		 * ECX[0] return 0; if state component i is a supervisor
 		 * state component, ECX[0] returns 1.
 		 */
-		__zap_regs();
 		cpuid_ops->cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx, ct);
 		if (!(ecx & 1))
 			c->xstate_offsets[i] = ebx;
@@ -257,7 +251,6 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 				 * of state component 'i' when the compacted format
 				 * of the extended region of an XSAVE area is used:
 				 */
-				__zap_regs();
 				cpuid_ops->cpuid_count(XSTATE_CPUID, i, &eax, &ebx, &ecx, &edx, ct);
 				if (ecx & 2)
 					c->xstate_comp_offsets[i] = ALIGN(c->xstate_comp_offsets[i], 64);
@@ -267,5 +260,4 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 
 	show_fpu_info(c);
 	return 0;
-#undef __zap_regs
 }
