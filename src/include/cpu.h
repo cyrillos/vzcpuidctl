@@ -46,6 +46,7 @@ extern int test_cpu_cap(cpuinfo_x86_t *c, unsigned int feature);
 extern void clear_cpu_cap(cpuinfo_x86_t *c, unsigned int feature);
 extern void set_cpu_cap(cpuinfo_x86_t *c, unsigned int feature);
 
+extern void init_cpuid(cpuinfo_x86_t *c);
 extern int fetch_cpuid(cpuinfo_x86_t *c);
 
 #endif /* VZCPUIDCTL_CPU_H__ */

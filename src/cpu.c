@@ -138,6 +138,12 @@ int test_fpu_cap(cpuinfo_x86_t *c, unsigned int feature)
 	return 0;
 }
 
+void init_cpuid(cpuinfo_x86_t *c)
+{
+	memset(c, 0, sizeof(*c));
+	init_fpuid(c);
+}
+
 int fetch_cpuid(cpuinfo_x86_t *c)
 {
 	x86_cpuid_call_trace_t *ct = &c->cpuid_call_trace;

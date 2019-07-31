@@ -110,6 +110,15 @@ int validate_fpu(struct cpuinfo_x86 *c)
 	return 0;
 }
 
+void init_fpuid(struct cpuinfo_x86 *c)
+{
+	/* Must be called after init_cpuid */
+	memset(c->xstate_offsets, 0xff, sizeof(c->xstate_offsets));
+	memset(c->xstate_sizes, 0xff, sizeof(c->xstate_sizes));
+	memset(c->xstate_comp_offsets, 0xff, sizeof(c->xstate_comp_offsets));
+	memset(c->xstate_comp_sizes, 0xff, sizeof(c->xstate_comp_sizes));
+}
+
 int fetch_fpuid(struct cpuinfo_x86 *c)
 {
 	x86_cpuid_call_trace_t *ct = &c->cpuid_call_trace;
@@ -125,6 +134,8 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 
 	if (validate_fpu_caps(c))
 		return -1;
+
+	init_fpuid(c);
 
 	__zap_regs();
 	cpuid_ops->cpuid_count(XSTATE_CPUID, 0, &eax, &ebx, &ecx, &edx, ct);
@@ -167,11 +178,6 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 	if (c->xsave_size_max > sizeof(struct xsave_struct))
 		pr_warn_once("max xsave frame exceed xsave_struct (%u %u)\n",
 			     c->xsave_size_max, (unsigned)sizeof(struct xsave_struct));
-
-	memset(c->xstate_offsets, 0xff, sizeof(c->xstate_offsets));
-	memset(c->xstate_sizes, 0xff, sizeof(c->xstate_sizes));
-	memset(c->xstate_comp_offsets, 0xff, sizeof(c->xstate_comp_offsets));
-	memset(c->xstate_comp_sizes, 0xff, sizeof(c->xstate_comp_sizes));
 
 	/* start at the beginnning of the "extended state" */
 	last_good_offset = offsetof(struct xsave_struct, extended_state_area);

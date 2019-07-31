@@ -466,6 +466,7 @@ int json_decode_cpuid_rec(cpuid_rec_t *rec, const char *data, size_t len)
 		goto out;
 	}
 
+	init_cpuid(&rec->c);
 	ret = json_decode_cpuinfo(cpu, &rec->c);
 out:
 	json_decref(root);
