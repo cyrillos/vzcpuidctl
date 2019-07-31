@@ -117,125 +117,6 @@ static int generate_override_entry(char *where, size_t size, cpuid_override_entr
 			e->op, e->eax, e->ebx, e->ecx, e->edx);
 }
 
-static int generate_cpuid_override(opts_t *opts, cpuid_rec_entry_t *entry)
-{
-	cpuinfo_x86_t *c =  &entry->rec.c;
-	char *buf = NULL, *pos, *end;
-	size_t buf_size = 0, buf_len;
-	int ret = -1;
-	ssize_t len;
-	int took;
-	size_t i;
-
-	struct override_list_entry *item, *tmp;
-	cpuid_override_entry_t *e;
-
-	LIST_HEAD(override_entries_list);
-
-	if (rt_cpuid_override_entries) {
-		pr_err("override already read!\n");
-		return -1;
-	}
-
-#define __alloc_entry(__item, __e)			\
-	do {						\
-		__item = xzalloc(sizeof(*__item));	\
-		if (!__item)				\
-			goto out;			\
-		__e = &__item->entry;			\
-	} while (0)
-
-	__alloc_entry(item, e);
-
-	e->op	= XSTATE_CPUID;
-	e->eax	= c->xfeatures_mask & 0xffffffff;
-	e->edx	= c->xfeatures_mask >> 32;
-	e->ebx	= c->xsave_size;
-	e->ecx	= c->xsave_size_max;
-
-	list_add(&item->list, &override_entries_list);
-
-	for (i = FIRST_EXTENDED_XFEATURE; i < XFEATURE_MAX; i++) {
-		if (!(c->xfeatures_mask & (1UL << i)))
-			continue;
-
-		__alloc_entry(item, e);
-
-		e->op		= XSTATE_CPUID;
-		e->count	= i;
-		e->has_count	= true;
-		e->eax		= c->xstate_sizes[i];
-		if (c->xstate_offsets[i] != 0xff)
-			e->ecx	= 1;
-
-		list_add(&item->list, &override_entries_list);
-	}
-
-	/* I'm too lazy to make it extendable :-) */
-	buf_size = 1 << 20;
-	buf = xmalloc(buf_size);
-	if (!buf)
-		goto out;
-	end = buf + buf_size;
-	pos = buf;
-
-	for (i = 0; i < rt_nr_cpuid_override_entries; i++) {
-		e = &rt_cpuid_override_entries[i];
-
-		/* Skip old entries */
-		if (e->op == XSTATE_CPUID)
-			continue;
-
-		took = generate_override_entry(pos, end - pos, e);
-		pos += took;
-		if (pos > end || (end - pos) < 128) {
-			pr_err("Too many entries in the override list\n");
-			goto out;
-		}
-	}
-
-	list_for_each_entry(item, &override_entries_list, list) {
-		e = &item->entry;
-
-		took = generate_override_entry(pos, end - pos, e);
-		pos += took;
-
-		if (pos > end || (end - pos) < 128) {
-			pr_err("Too many entries in the override list\n");
-			goto out;
-		}
-	}
-
-	buf_len = pos - buf;
-	pr_info("Generated:\n%s", buf);
-
-	if (opts->out_fd_path) {
-		int fd = open(opts->out_fd_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-		if (fd < 0) {
-			pr_perror("Can't open %s", opts->out_fd_path);
-			goto out;
-		}
-
-		len = write(fd, buf, buf_len);
-		close(fd);
-
-		if (len != buf_len) {
-			pr_err("Wrote %zd bytes to %s while %zu expected\n",
-			       len, opts->out_fd_path, buf_len);
-			goto out;
-		}
-	}
-
-	ret = write_cpuid_override(opts, buf, buf_len);
-out:
-	list_for_each_entry_safe(item, tmp, &override_entries_list, list)
-		xfree(item);
-	xfree(buf);
-	return ret;
-
-#undef __alloc_entry
-}
-
 static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 {
 	cpuid_rec_entry_t *entry = NULL, *tmp;
@@ -482,7 +363,6 @@ cant_read:
 
 int cpuidctl_xsave_generate(opts_t *opts)
 {
-	size_t encoded_size = b64_encoded_size(sizeof(cpuid_rec_t));
 	cpuid_rec_entry_t *entry, *tmp;
 	LIST_HEAD(records_head);
 	str_entry_t *sl;
@@ -536,7 +416,6 @@ int cpuidctl_xsave_generate(opts_t *opts)
 		goto out;
 	}
 
-	//ret = generate_cpuid_override(opts, entry);
 out:
 	list_for_each_entry_safe(entry, tmp, &records_head, list)
 		xfree(entry);
