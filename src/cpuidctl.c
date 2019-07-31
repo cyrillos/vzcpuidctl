@@ -332,7 +332,7 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 		e->count	= i;
 		e->has_count	= true;
 		e->eax		= template->xstate_sizes[i];
-		e->ebx		= 0;
+		e->ebx		= template->xstate_offsets[i];
 		e->edx		= 0;
 
 		e->ecx		= 0;
