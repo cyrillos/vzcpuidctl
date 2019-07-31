@@ -123,10 +123,18 @@ void init_fpuid(struct cpuinfo_x86 *c)
 	 * in the fixed offsets in the xsave area in either compacted form
 	 * or standard form.
 	 */
-	c->xstate_offsets[0]	= 0;
-	c->xstate_sizes[0]	= offsetof(struct i387_fxsave_struct, xmm_space);
-	c->xstate_offsets[1]	= c->xstate_sizes[0];
-	c->xstate_sizes[1]	= FIELD_SIZEOF(struct i387_fxsave_struct, xmm_space);
+	c->xstate_offsets[0]		= 0;
+	c->xstate_sizes[0]		= offsetof(struct i387_fxsave_struct, xmm_space);
+	c->xstate_offsets[1]		= c->xstate_sizes[0];
+	c->xstate_sizes[1]		= FIELD_SIZEOF(struct i387_fxsave_struct, xmm_space);
+
+	/*
+	 * Compressed offsets/sizes for legacy states are fixed.
+	 */
+	c->xstate_comp_offsets[0]	= 0;
+	c->xstate_comp_sizes[0]		= offsetof(struct i387_fxsave_struct, xmm_space);
+	c->xstate_comp_offsets[1]	= c->xstate_comp_sizes[0];
+	c->xstate_comp_sizes[1]		= FIELD_SIZEOF(struct i387_fxsave_struct, xmm_space);
 
 }
 
@@ -220,11 +228,6 @@ int fetch_fpuid(struct cpuinfo_x86 *c)
 
 	BUILD_BUG_ON(sizeof(c->xstate_offsets) != sizeof(c->xstate_sizes));
 	BUILD_BUG_ON(sizeof(c->xstate_comp_offsets) != sizeof(c->xstate_comp_sizes));
-
-	c->xstate_comp_offsets[0]	= 0;
-	c->xstate_comp_sizes[0]		= offsetof(struct i387_fxsave_struct, xmm_space);
-	c->xstate_comp_offsets[1]	= c->xstate_comp_sizes[0];
-	c->xstate_comp_sizes[1]		= FIELD_SIZEOF(struct i387_fxsave_struct, xmm_space);
 
 	if (!test_cpu_cap(c, X86_FEATURE_XSAVES)) {
 		for (i = FIRST_EXTENDED_XFEATURE; i < XFEATURE_MAX; i++) {
