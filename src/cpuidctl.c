@@ -232,9 +232,41 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 	e->ecx		= template->xsave_size_max;
 	list_add(&item->list, &override_entries_list);
 
+	__alloc_entry(item, e);
+
+	j = call_trace_find_idx_in(template_ct,
+				   XSTATE_CPUID, 0,
+				   (uint32_t)1, 0);
+	if (j < 0) {
+		pr_err("No calltrace for xsaves_size %zu\n", 1);
+		goto out;
+	}
+
+	e->op		= XSTATE_CPUID;
+	e->count	= 1;
+	e->has_count	= true;
+	e->eax		= template_ct->out[j].eax;
+	e->edx		= template_ct->out[j].edx;
+	e->ebx		= template_ct->out[j].ebx;
+	e->ecx		= template->xsaves_size;
+
+	list_add(&item->list, &override_entries_list);
+
 	for (i = FIRST_EXTENDED_XFEATURE; i < XFEATURE_MAX; i++) {
-		if (!(template->xfeatures_mask & (1UL << i)))
+		if (!(template->xfeatures_mask & (1UL << i))) {
+			__alloc_entry(item, e);
+
+			e->op		= XSTATE_CPUID;
+			e->count	= i;
+			e->has_count	= true;
+			e->eax		= 0;
+			e->ebx		= 0;
+			e->ecx		= 0;
+			e->edx		= 0;
+
+			list_add(&item->list, &override_entries_list);
 			continue;
+		}
 
 		j = call_trace_find_idx_in(template_ct,
 					   XSTATE_CPUID, 0,
@@ -250,14 +282,14 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 		e->count	= i;
 		e->has_count	= true;
 		e->eax		= template->xstate_sizes[i];
-		e->ebx		= template_ct->out[j].ebx;
+		e->ebx		= 0;
+		e->edx		= 0;
 
+		e->ecx		= 0;
 		if (template->xstate_offsets[i] != 0xff)
-			e->ecx	= 1;
-		else
-			e->ecx	= template_ct->out[j].ecx;
-
-		e->edx		= template_ct->out[j].edx;
+			e->ecx	|= 1;
+		if (template->xstate_comp_offsets[i] != 0xff)
+			e->ecx	|= 2;
 
 		list_add(&item->list, &override_entries_list);
 	}
