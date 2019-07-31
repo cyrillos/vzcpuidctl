@@ -9,7 +9,6 @@
 #include "cpu.h"
 #include "log.h"
 #include "xmalloc.h"
-#include "base64.h"
 #include "json.h"
 #include "cpuidctl.h"
 

@@ -23,13 +23,11 @@ set(SOURCES
 	"src/cpuid.c"
 	"src/log.c"
 	"src/json.c"
-	"src/base64.c"
 	"src/cpuidctl.c"
 	"src/main.c")
 
 set(HEADERS
 	"src/mpack/mpack.h"
-	"src/include/base64.h"
 	"src/include/bitops.h"
 	"src/include/compiler.h"
 	"src/include/cpu.h"
