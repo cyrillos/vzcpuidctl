@@ -239,15 +239,17 @@ out:
 static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 {
 	cpuid_rec_entry_t *entry = NULL, *tmp;
-	struct cpuinfo_x86 rt = { };
 	size_t min_size = SIZE_MAX;
-	cpuinfo_x86_t *template;
+
+	cpuinfo_x86_t *template = NULL;
+	cpuinfo_x86_t *rt = NULL;
+	x86_cpuid_call_trace_t *template_ct = NULL;
 
 	char *buf = NULL, *pos, *end;
 	size_t buf_size = 0, buf_len;
 	ssize_t len;
 	int took;
-	size_t i;
+	size_t i, j;
 
 	LIST_HEAD(override_entries_list);
 	override_list_entry_t *item, *itmp;
@@ -288,18 +290,23 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 	}
 
 	template = &entry->rec.c;
+	template_ct = &template->cpuid_call_trace;
+
 	pr_info("Selected fpu entry\n");
 	pr_info("---\n");
 	show_fpu_info(template);
 	pr_info("---\n");
 
 	pr_info("Fetching runtime cpuinfo\n");
-	if (fetch_cpuid(&rt))
+	rt = xmalloc(sizeof(*rt));
+	if (!rt)
+		goto out;
+	if (fetch_cpuid(rt))
 		return -1;
 
 	pr_info("Runtime fpu\n");
 	pr_info("---\n");
-	show_fpu_info(&rt);
+	show_fpu_info(rt);
 	pr_info("---\n");
 
 	/* I'm too lazy to make it extendable :-) */
@@ -334,11 +341,85 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 	 * updated and anythingelse should left from rt data
 	 * untouched.
 	 */
+	__alloc_entry(item, e);
 
+	e->op		= XSTATE_CPUID;
+	e->count	= 0;
+	e->has_count	= true;
+	e->eax		= template->xfeatures_mask & 0xffffffff;
+	e->edx		= template->xfeatures_mask >> 32;
+	e->ebx		= template->xsave_size;
+	e->ecx		= template->xsave_size_max;
+	list_add(&item->list, &override_entries_list);
+
+	for (i = FIRST_EXTENDED_XFEATURE; i < XFEATURE_MAX; i++) {
+		if (!(template->xfeatures_mask & (1UL << i)))
+			continue;
+
+		j = call_trace_find_idx_in(template_ct,
+					   XSTATE_CPUID, 0,
+					   (uint32_t)i, 0);
+		if (j < 0) {
+			pr_err("No calltrace for xstate_offsets %zu\n", i);
+			goto out;
+		}
+
+		__alloc_entry(item, e);
+
+		e->op		= XSTATE_CPUID;
+		e->count	= i;
+		e->has_count	= true;
+		e->eax		= template->xstate_sizes[i];
+		e->ebx		= template_ct->out[j].ebx;
+
+		if (template->xstate_offsets[i] != 0xff)
+			e->ecx	= 1;
+		else
+			e->ecx	= template_ct->out[j].ecx;
+
+		e->edx		= template_ct->out[j].edx;
+
+		list_add(&item->list, &override_entries_list);
+	}
+
+	list_for_each_entry(item, &override_entries_list, list) {
+		e = &item->entry;
+
+		took = generate_override_entry(pos, end - pos, e);
+		pos += took;
+
+		if (pos > end || (end - pos) < 128) {
+			pr_err("Too many entries in the override list\n");
+			goto out;
+		}
+	}
+
+	buf_len = pos - buf;
+	pr_info("Generated:\n%s", buf);
+
+	if (opts->out_fd_path) {
+		int fd = open(opts->out_fd_path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+		if (fd < 0) {
+			pr_perror("Can't open %s", opts->out_fd_path);
+			goto out;
+		}
+
+		len = write(fd, buf, buf_len);
+		close(fd);
+
+		if (len != buf_len) {
+			pr_err("Wrote %zd bytes to %s while %zu expected\n",
+			       len, opts->out_fd_path, buf_len);
+			goto out;
+		}
+	}
+
+	ret = write_cpuid_override(opts, buf, buf_len);
 out:
 	list_for_each_entry_safe(item, itmp, &override_entries_list, list)
 		xfree(item);
 	xfree(buf);
+	xfree(rt);
 	return ret;
 
 #undef __alloc_entry
