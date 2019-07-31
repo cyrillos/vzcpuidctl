@@ -238,7 +238,7 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 				   XSTATE_CPUID, 0,
 				   (uint32_t)1, 0);
 	if (j < 0) {
-		pr_err("No calltrace for xsaves_size %zu\n", 1);
+		pr_err("No calltrace for xsaves_size %d\n", 1);
 		goto out;
 	}
 
@@ -272,7 +272,7 @@ static int generate_fpu_override(opts_t *opts, struct list_head *records_head)
 					   XSTATE_CPUID, 0,
 					   (uint32_t)i, 0);
 		if (j < 0) {
-			pr_err("No calltrace for xstate_offsets %zu\n", i);
+			pr_err("No calltrace for xstate_offsets %d\n", (int32_t)i);
 			goto out;
 		}
 
